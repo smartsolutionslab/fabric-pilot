@@ -1,0 +1,4 @@
+namespace FabricPilot.Host;
+
+/// <summary>The caller as the identity provider names them; a named type so the OpenAPI document describes it.</summary>
+public sealed record CurrentUser(string? Name);

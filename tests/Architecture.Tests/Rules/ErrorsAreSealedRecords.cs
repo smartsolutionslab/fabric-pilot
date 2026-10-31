@@ -1,0 +1,28 @@
+namespace FabricPilot.Architecture.Tests.Rules;
+
+public sealed class ErrorsAreSealedRecords : IArchitectureRule
+{
+    public string Description => "Every error in a module derives from ApiError and is a sealed record.";
+
+    public IEnumerable<string> Violations(ArchitectureModel model)
+    {
+        Ensure.That(model).IsNotNull();
+
+        var errors = model.ModuleAssemblies
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type.IsClass && typeof(ApiError).IsAssignableFrom(type));
+
+        foreach (var error in errors)
+        {
+            if (!error.IsSealed)
+            {
+                yield return $"{error.FullName} is not sealed.";
+            }
+
+            if (error.GetMethod("<Clone>$") is null)
+            {
+                yield return $"{error.FullName} is not a record.";
+            }
+        }
+    }
+}

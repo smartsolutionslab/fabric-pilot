@@ -1,0 +1,9 @@
+using FabricPilot.BuildingBlocks.Tenancy;
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+public static class TenancyRegistration
+{
+    public static IServiceCollection AddTenancy(this IServiceCollection services) =>
+        services.AddHttpContextAccessor().AddScoped<ITenantContext, HttpTenantContext>();
+}

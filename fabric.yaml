@@ -1,0 +1,53 @@
+# Written by fabric. These choices are fixed for this project (ADR-0001 of the generator).
+fabric: 1
+name: fabric-pilot
+profile: saas-standard-react
+project:
+  backend.database: postgres
+  backend.data-access: ef-core
+  backend.topology: modular-monolith
+  backend.bus.transport: rabbitmq
+  backend.bus.library: wolverine
+  backend.mediator: hand-rolled
+  backend.api-style: minimal-apis
+  backend.api-protocols: [rest]
+  backend.errors: result
+  backend.result-style: typed-outcomes
+  backend.guards: ensure-that
+  backend.absence: option
+  backend.auth: keycloak
+  backend.tenancy: column
+  backend.test.framework: xunit
+  backend.test.assertions: shouldly
+  backend.test.mocks: nsubstitute
+  backend.test.integration: aspire-fixture
+  backend.test.extras: []
+  test.discipline: red-first
+  frontend.framework: react
+  frontend.architecture: spa
+  frontend.workspace: pnpm-workspaces
+  frontend.state: redux-toolkit
+  frontend.api-client: rtk-query-codegen
+  frontend.routing: react-router
+  frontend.forms: react-hook-form
+  frontend.validation: zod
+  frontend.styling: tailwind
+  frontend.ui-library: shadcn
+  frontend.design-system: none
+  frontend.data-grid: tanstack-table
+  frontend.charts: echarts
+  frontend.realtime: none
+  frontend.auth-client: oidc-client-ts
+  frontend.pwa: "no"
+  frontend.test.extras: [accessibility]
+module-defaults:
+  module.style: ddd
+  module.ddd-depth: light
+  module.cqrs: logical
+  module.communication: [integration-events]
+modules:
+  billing:
+    module.style: ddd
+    module.ddd-depth: light
+    module.cqrs: logical
+    module.communication: [integration-events]

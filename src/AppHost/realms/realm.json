@@ -1,0 +1,71 @@
+{
+  "realm": "fabric-pilot",
+  "enabled": true,
+  "registrationAllowed": false,
+  "groups": [
+    { "name": "tenants", "subGroups": [ { "name": "tenant-a" }, { "name": "tenant-b" } ] }
+  ],
+  "clients": [
+    {
+      "clientId": "fabric-pilot-api",
+      "enabled": true,
+      "bearerOnly": true
+    },
+    {
+      "clientId": "fabric-pilot-web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "fabric-pilot-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "developer",
+      "enabled": true,
+      "email": "developer@example.com",
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Developer",
+      "credentials": [{ "type": "password", "value": "developer", "temporary": false }],
+      "groups": ["/tenants/tenant-a"]
+    },
+    {
+      "username": "developer-b",
+      "enabled": true,
+      "email": "developer-b@example.com",
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Developer B",
+      "credentials": [{ "type": "password", "value": "developer-b", "temporary": false }],
+      "groups": ["/tenants/tenant-b"]
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      # The AppHost uses the Aspire CLI bundle (DCP and dashboard); set it up before anything builds the AppHost.
+      - run: dnx --yes aspire.cli@13.6.4 -- setup --install-path "$HOME/.aspire"
+      - run: dotnet build build.proj -c Release
+      # The integration tests start the whole application, the web app included.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test
+        run: for project in $(find tests -name '*.Tests.csproj' | sort); do dotnet test --project "$project" -c Release --no-build || exit 1; done
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install
+        working-directory: web
+      - run: pnpm build
+        working-directory: web
+      - run: pnpm lint
+        working-directory: web
+      - run: pnpm test
+        working-directory: web
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dnx --yes aspire.cli@13.6.4 -- setup --install-path "$HOME/.aspire"
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install
+        working-directory: web
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: web/app
+      - run: bash .github/scripts/e2e.sh
+

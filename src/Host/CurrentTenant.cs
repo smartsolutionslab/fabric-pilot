@@ -1,0 +1,4 @@
+namespace FabricPilot.Host;
+
+/// <summary>The caller's tenant; a named type so the OpenAPI document describes it.</summary>
+public sealed record CurrentTenant(string? TenantId);

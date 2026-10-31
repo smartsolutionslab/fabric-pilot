@@ -1,0 +1,17 @@
+import { fileURLToPath, URL } from 'node:url';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
+import tailwindcss from '@tailwindcss/vite';
+
+// Under Aspire the host's address arrives as services__host__http__0; /api is forwarded there without the prefix.
+const host = process.env.services__host__http__0;
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss()
+  ],
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  server: host ? { proxy: { '/api': { target: host, changeOrigin: true, rewrite: (path) => path.replace(/^\/api/, '') } } } : {},
+  test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'], setupFiles: ['./src/test-setup.ts'] },
+});

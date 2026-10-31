@@ -1,0 +1,7 @@
+namespace FabricPilot.BuildingBlocks.Tenancy;
+
+/// <summary>The tenant the current work belongs to; null when there is none, which reads nothing and saves nothing.</summary>
+public interface ITenantContext
+{
+    string? TenantId { get; }
+}

@@ -1,0 +1,23 @@
+namespace FabricPilot.Architecture.Tests.Rules;
+
+public sealed class DomainIsPure : IArchitectureRule
+{
+    public string Description => "A module's Domain project references nothing but the BCL, Kernel and BuildingBlocks.Domain.";
+
+    public IEnumerable<string> Violations(ArchitectureModel model)
+    {
+        Ensure.That(model).IsNotNull();
+
+        foreach (var assembly in model.ModuleAssemblies.Where(assembly => assembly.GetName().Name!.EndsWith(".Domain", StringComparison.Ordinal)))
+        {
+            foreach (var reference in assembly.GetReferencedAssemblies().Select(reference => reference.Name!).Where(name => !IsAllowed(name)))
+            {
+                yield return $"{assembly.GetName().Name} references {reference}.";
+            }
+        }
+    }
+
+    private static bool IsAllowed(string name) =>
+        name is "netstandard" or "mscorlib" or "System" or "FabricPilot.Kernel" or "FabricPilot.BuildingBlocks.Domain"
+        || name.StartsWith("System.", StringComparison.Ordinal);
+}
