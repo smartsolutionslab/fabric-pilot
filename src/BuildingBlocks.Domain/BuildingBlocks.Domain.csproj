@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AssemblyName>FabricPilot.BuildingBlocks.Domain</AssemblyName>
     <RootNamespace>FabricPilot.BuildingBlocks.Domain</RootNamespace>
   </PropertyGroup>
 
