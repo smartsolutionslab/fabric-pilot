@@ -24,11 +24,6 @@ public sealed class Invoice : AggregateRoot<InvoiceId>
 
     public Result<Invoice, ApiError> Pay()
     {
-        if (IsPaid)
-        {
-            return Failure(InvoiceFailures.AlreadyPaid(Id));
-        }
-
         IsPaid = true;
         Raise(new InvoicePaid(Id, Amount));
         return Success(this);
