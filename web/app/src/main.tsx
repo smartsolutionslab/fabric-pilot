@@ -6,13 +6,14 @@ import { withRouter } from './providers/router';
 import { App } from './App';
 import './index.css';
 
-/** Wraps the app in one provider; listed outermost first. */
+/** Wraps the app in one provider. */
 type Provider = (children: ReactNode) => ReactNode;
 
 const providers: Provider[] = [
+  // Outermost first: each one wraps all that follow it.
   withAuth,
   withStore,
-  withRouter
+  withRouter,
 ];
 
 const root = document.getElementById('root');

@@ -1,0 +1,6 @@
+using FabricPilot.BuildingBlocks.Messaging;
+
+namespace FabricPilot.Agents.Tests;
+
+/// <summary>A request with an optional enum, written by name: absent must be a value its schema admits.</summary>
+public sealed record FindByStatus(Option<Status> Status) : IQuery<Result<int, ApiError>>;

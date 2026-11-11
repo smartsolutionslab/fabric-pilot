@@ -1,0 +1,131 @@
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using Microsoft.Extensions.AI;
+
+namespace FabricPilot.Host.Agents;
+
+/// <summary>
+/// The project's model while the agent panel is tested, in Development only: the AppHost's <c>model-stand-in</c>
+/// parameter switches it on, and only the tests set it. Asked first, it calls the
+/// first tool it is offered, giving every argument the tool requires the user's last message; a message that is a tool's
+/// name, a space and a JSON object (<c>propose_widget {"source": ...}</c>) calls that tool with those arguments instead,
+/// when it is offered. Given the tool's result
+/// after that message, it answers <c>The tool said: &lt;result&gt;</c>, and offered no tool, it repeats the user's
+/// message. A result from an earlier turn does not count, so every turn calls the tool again. It streams each
+/// answer a word at a time, so the panel shows text arriving as a real model sends it. It never calls a model.
+/// </summary>
+public sealed class StandInChatClient : IChatClient
+{
+    public async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+        await GetStreamingResponseAsync(messages, options, cancellationToken).ToChatResponseAsync(cancellationToken);
+
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Ensure.That(messages).IsNotNull();
+
+        List<ChatMessage> conversation = [.. messages];
+        var latest = conversation.FindLastIndex(message => message.Role == ChatRole.User);
+        var question = latest < 0 ? string.Empty : conversation[latest].Text;
+
+        // Only a result that answers the latest message counts: an earlier turn's results are history.
+        var result = conversation.Skip(latest + 1).SelectMany(message => message.Contents).OfType<FunctionResultContent>().LastOrDefault();
+        if (result is null && Named(options, question) is { } named)
+        {
+            var call = new FunctionCallContent($"call-{Guid.CreateVersion7():N}", named.Tool.Name, named.Arguments);
+            yield return new ChatResponseUpdate(ChatRole.Assistant, [call]) { MessageId = Guid.CreateVersion7().ToString("N") };
+            yield break;
+        }
+
+        if (result is null && options?.Tools?.OfType<AIFunctionDeclaration>().FirstOrDefault() is { } tool)
+        {
+            var call = new FunctionCallContent($"call-{Guid.CreateVersion7():N}", tool.Name, Arguments(tool, question));
+            yield return new ChatResponseUpdate(ChatRole.Assistant, [call]) { MessageId = Guid.CreateVersion7().ToString("N") };
+            yield break;
+        }
+
+        var answer = result is null ? question : $"The tool said: {Text(result.Result)}";
+        var messageId = Guid.CreateVersion7().ToString("N");
+        foreach (var chunk in Chunks(answer))
+        {
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return new ChatResponseUpdate(ChatRole.Assistant, chunk) { MessageId = messageId };
+        }
+    }
+
+    public object? GetService(Type serviceType, object? serviceKey = null)
+    {
+        Ensure.That(serviceType).IsNotNull();
+
+        return serviceKey is null && serviceType.IsInstanceOfType(this) ? this : null;
+    }
+
+    public void Dispose()
+    {
+    }
+
+    /// <summary>
+    /// The offered tool a message names, with the JSON object after its name as the arguments; null for any other message,
+    /// which the stand-in answers as it always has.
+    /// </summary>
+    private static (AIFunctionDeclaration Tool, Dictionary<string, object?> Arguments)? Named(ChatOptions? options, string question)
+    {
+        var space = question.IndexOf(' ', StringComparison.Ordinal);
+        if (space < 1 || options?.Tools?.OfType<AIFunctionDeclaration>().FirstOrDefault(tool => tool.Name == question[..space]) is not { } named)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var json = JsonDocument.Parse(question[(space + 1)..]);
+            if (json.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            return (named, json.RootElement.EnumerateObject().ToDictionary(property => property.Name, property => (object?)property.Value.Clone()));
+        }
+        catch (JsonException)
+        {
+            // Not a JSON object after the name: an ordinary message.
+            return null;
+        }
+    }
+
+    /// <summary>The question as every argument the tool's schema requires.</summary>
+    private static Dictionary<string, object?> Arguments(AIFunctionDeclaration tool, string question)
+    {
+        Dictionary<string, object?> arguments = [];
+        if (tool.JsonSchema.TryGetProperty("required", out var required) && required.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var name in required.EnumerateArray().Select(name => name.GetString()).OfType<string>())
+            {
+                arguments[name] = question;
+            }
+        }
+
+        return arguments;
+    }
+
+    /// <summary>The answer a word at a time, each word with the space after it.</summary>
+    private static IEnumerable<string> Chunks(string answer)
+    {
+        var words = answer.Split(' ');
+        for (var index = 0; index < words.Length; index++)
+        {
+            yield return index < words.Length - 1 ? words[index] + " " : words[index];
+        }
+    }
+
+    /// <summary>A text result as the text itself, any other JSON as written, anything else as its string.</summary>
+    private static string? Text(object? result) => result switch
+    {
+        JsonElement { ValueKind: JsonValueKind.String } text => text.GetString(),
+        JsonElement json => json.GetRawText(),
+        _ => result?.ToString(),
+    };
+}

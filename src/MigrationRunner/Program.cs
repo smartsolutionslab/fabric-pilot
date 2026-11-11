@@ -22,5 +22,7 @@ using var host = builder.Build();
 foreach (var context in contexts)
 {
     await using var scope = host.Services.CreateAsyncScope();
-    await ((DbContext)scope.ServiceProvider.GetRequiredService(context)).Database.MigrateAsync();
+    await ((ModuleDbContext)scope.ServiceProvider.GetRequiredService(context)).MigrateModuleAsync();
 }
+
+await host.Services.CreateVectorTablesAsync(contexts);

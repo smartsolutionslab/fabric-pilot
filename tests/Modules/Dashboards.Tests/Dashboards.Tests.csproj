@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FabricPilot.Modules.Dashboards.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Modules/Dashboards/Dashboards.Api/Dashboards.Api.csproj" />
+    <Compile Include="../../Fakes/*.cs" Link="Fakes/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

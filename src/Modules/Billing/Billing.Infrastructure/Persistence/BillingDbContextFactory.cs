@@ -12,7 +12,7 @@ public sealed class BillingDbContextFactory : IDesignTimeDbContextFactory<Billin
         const string connectionString = "Server=localhost";
         const string schema = BillingDbContext.Schema;
         var options = new DbContextOptionsBuilder<BillingDbContext>();
-            options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", schema));
+        options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", schema));
         return new BillingDbContext(options.Options, NoServices.Instance);
     }
 }

@@ -1,0 +1,7 @@
+export function KnowledgePage() {
+  return (
+    <main>
+      <h1>Knowledge</h1>
+    </main>
+  );
+}

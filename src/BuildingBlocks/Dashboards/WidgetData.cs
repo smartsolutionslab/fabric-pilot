@@ -1,0 +1,4 @@
+namespace FabricPilot.BuildingBlocks.Dashboards;
+
+/// <summary>What running a widget answers: a chart's series or a table's page, as its <see cref="Kind"/> says.</summary>
+public sealed record WidgetData(WidgetKind Kind, ChartSeries? Chart, WidgetTable? Table);

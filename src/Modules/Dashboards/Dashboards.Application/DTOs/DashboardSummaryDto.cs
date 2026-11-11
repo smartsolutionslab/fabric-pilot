@@ -1,0 +1,3 @@
+namespace FabricPilot.Modules.Dashboards.Application.DTOs;
+
+public sealed record DashboardSummaryDto(Guid Id, string Name, int WidgetCount);

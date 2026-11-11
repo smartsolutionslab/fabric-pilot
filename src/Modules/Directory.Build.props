@@ -18,6 +18,7 @@
     <ProjectReference Include="$(ModuleDirectory)/$(ModuleName).Domain/$(ModuleName).Domain.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)../BuildingBlocks/BuildingBlocks.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)../Contracts/Contracts.csproj" />
+    <PackageReference Include="Microsoft.Agents.AI" />
 
   </ItemGroup>
 

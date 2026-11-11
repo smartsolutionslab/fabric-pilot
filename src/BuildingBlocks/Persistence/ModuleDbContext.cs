@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FabricPilot.BuildingBlocks.Persistence;
@@ -22,6 +25,38 @@ public abstract class ModuleDbContext(DbContextOptions options, IServiceProvider
     {
         BeforeSaving();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Applies the module's migrations. A module starts with none, and EF Core 11 refuses to migrate a context that has
+    /// none (MigrationsNotFound). Without migrations the module gets its database and its migrations history table, as
+    /// EF Core 10 gave it; with them, a model that changed since the last one still fails, in MigrateAsync.
+    /// </summary>
+    public async Task MigrateModuleAsync(CancellationToken cancellationToken = default)
+    {
+        if (Database.GetMigrations().Any())
+        {
+            await Database.MigrateAsync(cancellationToken);
+            return;
+        }
+
+        var database = Database.GetService<IRelationalDatabaseCreator>();
+        if (!await database.ExistsAsync(cancellationToken))
+        {
+            await database.CreateAsync(cancellationToken);
+        }
+
+        await Database.GetService<IHistoryRepository>().CreateIfNotExistsAsync(cancellationToken);
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        Ensure.That(optionsBuilder).IsNotNull();
+
+        // Per instance: an interceptor may keep state for the context it belongs to.
+        optionsBuilder.AddInterceptors(
+            new FabricPilot.BuildingBlocks.DomainEvents.DomainEventDispatch(Services));
+        base.OnConfiguring(optionsBuilder);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

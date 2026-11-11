@@ -1,0 +1,13 @@
+namespace FabricPilot.Kernel;
+
+/// <summary>
+/// A <see cref="Result{TValue,TError}"/>'s success case. <c>Success(dto)</c> builds one half-made, waiting for a return
+/// type to say which result it is; a <c>switch</c> on a result matches it: <c>SuccessOutcome&lt;InvoiceDto&gt; success =&gt; ...</c>.
+/// </summary>
+public readonly struct SuccessOutcome<TValue>
+    where TValue : notnull
+{
+    internal SuccessOutcome(TValue value) => Value = value;
+
+    public TValue Value { get; }
+}

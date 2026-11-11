@@ -13,7 +13,9 @@ log="$(mktemp)"
 
 # No input: a background process group that reads its terminal is stopped.
 # Plain `dotnet run`: Aspire's CLI, which it hands the AppHost to, starts the Debug build whatever -c says.
-dotnet run --project src/AppHost --launch-profile http < /dev/null > "$log" 2>&1 &
+# Values only the tests give the AppHost's parameters, as arguments: Aspire's CLI passes those on to the AppHost, but not
+# an environment variable whose name has a hyphen, as every Parameters__<name> does.
+dotnet run --project src/AppHost --launch-profile http -- --Parameters:azure-openai-endpoint=https://not-a-real-resource.openai.azure.com --Parameters:azure-openai-api-key=not-a-real-key --Parameters:model-stand-in=true < /dev/null > "$log" 2>&1 &
 apphost=$!
 
 stop() {

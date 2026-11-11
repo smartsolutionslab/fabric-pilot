@@ -1,0 +1,6 @@
+using FabricPilot.BuildingBlocks.Messaging;
+
+namespace FabricPilot.Agents.Tests;
+
+/// <summary>An Option argument with a constructor default: a tool still requires it, and null means None.</summary>
+public sealed record Search(string Text, Option<int> Limit = default) : IQuery<Result<int, ApiError>>;

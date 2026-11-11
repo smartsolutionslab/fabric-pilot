@@ -1,0 +1,9 @@
+using FabricPilot.BuildingBlocks.Identity;
+
+namespace FabricPilot.Modules.Dashboards.Tests;
+
+/// <summary>The user a request is made for: the identity provider's subject, or none when no one is signed in.</summary>
+internal sealed class SignedInUser(string? subject) : ICurrentUser
+{
+    public string? Subject { get; } = subject;
+}

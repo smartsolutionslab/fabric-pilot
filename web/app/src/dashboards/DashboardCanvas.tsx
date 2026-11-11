@@ -1,0 +1,272 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMemo, useState } from 'react';
+import ReactGridLayout, { useContainerWidth } from 'react-grid-layout';
+import { useForm, useWatch } from 'react-hook-form';
+import { z } from 'zod';
+import { useGetDashboardsWidgetsQuery, usePutDashboardsByIdMutation, type WidgetDescriptionDto } from '@/api/generated';
+import { Button } from '@/components/ui/button';
+import { Failure } from './Failure';
+import { applyLayout, columns, hasRoom, lowest, nextPlacement, type Placement, toLayout, withinReach } from './layout';
+import { Pager } from './Pager';
+import { PlacedWidget } from './PlacedWidget';
+import { DashboardAssistant } from './DashboardAssistant';
+import { PendingWidget } from './PendingWidget';
+import { acceptProposal, type PendingProposal, pendingOnGrid, replacedBy } from './proposal';
+import { uuidV7 } from './uuidV7';
+import { checkChoice, visuals } from './widgetChoice';
+
+const rowHeight = 40;
+/** The host refuses a dashboard with more widgets than this. */
+const maximumWidgets = 50;
+const catalogPageSize = 100;
+const noWidgets: WidgetDescriptionDto[] = [];
+
+const nameSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'A dashboard needs a name of 1 to 100 characters.')
+    .max(100, 'A dashboard needs a name of 1 to 100 characters.'),
+});
+
+const widgetSchema = z.object({
+  source: z.string().min(1, 'Choose a widget.'),
+  visual: z.string().min(1, 'Choose how to show it.'),
+});
+
+export interface DraftDashboard {
+  id: string;
+  name: string;
+  widgets: Placement[];
+}
+
+interface DashboardCanvasProps {
+  dashboard: DraftDashboard;
+  onSaved: () => void;
+}
+
+/**
+ * One dashboard being edited: its name, the declared widgets on a 12-column grid that the user moves and resizes, and
+ * Save, which PUTs the whole dashboard to its id, so saving twice saves it once.
+ */
+export function DashboardCanvas({ dashboard, onSaved }: DashboardCanvasProps) {
+  const [placements, setPlacements] = useState<Placement[]>(dashboard.widgets);
+  // Counts the draft's changes; the notice says Saved only while the saved revision is still the current one, so a
+  // save that ends after a later edit does not call that edit saved.
+  const [revision, setRevision] = useState(0);
+  const [savedRevision, setSavedRevision] = useState<number | undefined>();
+  const [failed, setFailed] = useState(false);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const widgets = useGetDashboardsWidgetsQuery({ page: catalogPage, pageSize: catalogPageSize });
+  const [save, { isLoading: saving }] = usePutDashboardsByIdMutation();
+  const { width, containerRef } = useContainerWidth();
+  // Only the page asked for: RTK Query's data keeps the page before while the next one loads, and a widget chosen from
+  // it would be added from a page no longer on screen.
+  const catalog = widgets.currentData?.items ?? noWidgets;
+  const loading = widgets.isFetching;
+  const listed = useMemo(() => new Map(catalog.map((widget) => [widget.id, widget] as const)), [catalog]);
+
+  const [saves, setSaves] = useState(0);
+  const [tooLow, setTooLow] = useState(false);
+  const full = placements.length >= maximumWidgets;
+  const roomLeft = hasRoom(placements);
+  // The widgets the dashboards agent proposed: on the grid, outside the draft, until the user accepts or discards each.
+  const [pending, setPending] = useState<PendingProposal[]>([]);
+  const proposed = pendingOnGrid(placements, pending);
+
+  const edited = () => {
+    setRevision((current) => current + 1);
+    setFailed(false);
+  };
+
+  /** Every change to the draft: a notice that it was saved no longer holds. */
+  const change = (next: (current: Placement[]) => Placement[]) => {
+    setPlacements(next);
+    edited();
+  };
+
+  const propose = (proposal: PendingProposal) => setPending((current) => [...current, proposal]);
+  const decide = (call: string) => setPending((current) => current.filter((other) => other.call !== call));
+
+  /** Accept only changes the draft, adding the widget or replacing the one it names; Save persists it as any edit. */
+  const accept = ({ call, proposal }: PendingProposal) => {
+    const key = uuidV7();
+    change((current) => acceptProposal(current, proposal, key));
+    decide(call);
+  };
+
+  const naming = useForm({ resolver: zodResolver(nameSchema), defaultValues: { name: dashboard.name } });
+  const adding = useForm({ resolver: zodResolver(widgetSchema), defaultValues: { source: '', visual: '' } });
+  const chosen = listed.get(useWatch({ control: adding.control, name: 'source' }));
+
+  // Another page of the picker lists other widgets: a choice from this one would be added with the next page's visual.
+  const pickerPage = (page: number) => {
+    setCatalogPage(page);
+    adding.reset();
+  };
+
+  const add = adding.handleSubmit(({ source, visual }) => {
+    const choice = checkChoice(catalog, source, visual);
+    if (!choice.ok) {
+      adding.setError(choice.field, { message: choice.message });
+      return;
+    }
+
+    change((current) => [...current, nextPlacement(current, uuidV7(), source, visual)]);
+    adding.reset();
+  });
+
+  const submit = naming.handleSubmit(async ({ name }) => {
+    const submitted = revision;
+    try {
+      await save({ id: dashboard.id, saveDashboardRequest: { name, widgets: placements } }).unwrap();
+      setSavedRevision(submitted);
+      setFailed(false);
+      setSaves((count) => count + 1);
+      onSaved();
+    } catch {
+      setFailed(true);
+    }
+  });
+
+  return (
+    <section aria-label="Dashboard" className="flex flex-col gap-4">
+      <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Dashboard name
+          <input className="rounded border px-2 py-1" {...naming.register('name', { onChange: edited })} />
+        </label>
+        <Button type="submit" disabled={saving}>
+          Save dashboard
+        </Button>
+        {naming.formState.errors.name && <p role="alert">{naming.formState.errors.name.message}</p>}
+        {savedRevision === revision && <p role="status">Saved.</p>}
+        {failed && <p role="alert">The dashboard could not be saved.</p>}
+      </form>
+
+      <form onSubmit={add} className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Widget
+          <select
+            className="rounded border px-2 py-1"
+            disabled={loading}
+            {...adding.register('source', {
+              onChange: (event: { target: { value: string } }) =>
+                adding.setValue('visual', visuals[listed.get(event.target.value)?.kind ?? 'Chart'][0].value),
+            })}
+          >
+            <option value="">Choose a widget</option>
+            {catalog.map((widget) => (
+              <option key={widget.id} value={widget.id}>
+                {widget.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Shown as
+          <select className="rounded border px-2 py-1" disabled={loading} {...adding.register('visual')}>
+            {visuals[chosen?.kind ?? 'Chart'].map((visual) => (
+              <option key={visual.value} value={visual.value}>
+                {visual.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button type="submit" variant="secondary" disabled={loading || full || !roomLeft}>
+          Add widget
+        </Button>
+        {full && <p>A dashboard holds at most {maximumWidgets} widgets.</p>}
+        {!full && !roomLeft && <p>There is no room for another widget: a dashboard reaches down to row {lowest}.</p>}
+        {adding.formState.errors.source && <p role="alert">{adding.formState.errors.source.message}</p>}
+        {adding.formState.errors.visual && <p role="alert">{adding.formState.errors.visual.message}</p>}
+        <Pager
+          label="widgets"
+          page={catalogPage}
+          pageSize={catalogPageSize}
+          total={loading ? undefined : widgets.currentData?.totalCount}
+          onPage={pickerPage}
+        />
+      </form>
+      {widgets.isError && (
+        <Failure
+          message="The widgets could not be loaded."
+          retry="Try loading the widgets again"
+          onRetry={widgets.refetch}
+        />
+      )}
+
+      {tooLow && <p role="alert">A widget cannot start below row {lowest}; it went back where it was.</p>}
+      <div ref={containerRef}>
+        <ReactGridLayout
+          width={width}
+          layout={[...toLayout(placements), ...proposed.map(({ item }) => item)]}
+          gridConfig={{ cols: columns, rowHeight }}
+          dragConfig={{ cancel: 'button, select, input, table' }}
+          onLayoutChange={(layout) => {
+            const moved = applyLayout(placements, layout);
+            if (samePlaces(moved, placements)) {
+              return;
+            }
+
+            // A widget moved or grown below the lowest row snaps back: the grid is drawn from the placements.
+            if (!withinReach(moved)) {
+              setTooLow(true);
+              setPlacements((current) => [...current]);
+              return;
+            }
+
+            setTooLow(false);
+            change(() => moved);
+          }}
+        >
+          {placements.map((placement) => (
+            <div key={placement.key}>
+              <PlacedWidget
+                placement={placement}
+                rowHeight={rowHeight}
+                refresh={saves}
+                onRemove={() => change((current) => current.filter((other) => other.key !== placement.key))}
+              />
+            </div>
+          ))}
+          {proposed.map(({ proposed: proposal, item }) => {
+            const replacing = replacedBy(placements, proposal.proposal) !== undefined;
+            return (
+              <div key={item.i}>
+                <PendingWidget
+                  proposal={proposal.proposal}
+                  rows={item.h}
+                  rowHeight={rowHeight}
+                  replacing={replacing}
+                  canAccept={replacing || (!full && roomLeft)}
+                  refresh={saves}
+                  onAccept={() => accept(proposal)}
+                  onDiscard={() => decide(proposal.call)}
+                />
+              </div>
+            );
+          })}
+        </ReactGridLayout>
+      </div>
+      <DashboardAssistant widgets={placements} onProposal={propose} />
+    </section>
+  );
+}
+
+/** Whether the grid only re-reported the places the widgets already have, as it does after every render. */
+function samePlaces(left: readonly Placement[], right: readonly Placement[]) {
+  return (
+    left.length === right.length &&
+    left.every((placement, index) => {
+      const other = right[index];
+      return (
+        other !== undefined &&
+        placement.x === other.x &&
+        placement.y === other.y &&
+        placement.width === other.width &&
+        placement.height === other.height
+      );
+    })
+  );
+}

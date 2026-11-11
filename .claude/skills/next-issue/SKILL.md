@@ -5,13 +5,16 @@ description: Claim the next eligible issue of a lane from the board and deliver 
 
 # Deliver the next issue
 
-Arguments: the lane (`backend`, `frontend`, `infra`, …) and this run's executor, `<family>-<runtime>/<detail>`, e.g. `claude-cloud/lane-backend` or `claude-local/<host>`.
+Arguments: the lane (one of the lanes in `docs/owners.yml`), this run's executor, `<family>-<runtime>/<detail>`, e.g. `claude-cloud/lane-backend` or `claude-local/<host>`, and optionally the one issue to take.
 
-1. **Claim.** Run `bash .github/scripts/board/next.sh <lane> <executor>`.
+1. **Claim.** Run `bash .github/scripts/board/next.sh <lane> <executor> [issue]`. Without an issue it takes the lowest-numbered eligible one; with one it takes that issue or none.
    - Exit 3: nothing is eligible in the lane. Stop and say so.
+   - Exit 1: the named issue is not eligible (the reason is printed), or a claim failed for another reason, printed above (permissions, network, a refused push). Nothing was claimed. Stop and report that output verbatim; do not do the script's steps by hand.
    - Otherwise it prints `<issue> <branch>`. Fetch and check out that branch. If it already has commits, a previous agent left them: read them and resume, do not start over.
 2. **Work the phases** in AGENTS.md, each in its own subagent from `.claude/agents/`, handing each the artifact of the one before:
-   architect → test-writer (returns the failing output verbatim) → the lane's engineer (may not edit those tests) → the lane's reviewer.
+   architect → test-writer (returns the failing output verbatim) → the lane's engineer (may not edit those tests) → verify (the `/verify` skill: observes the change working end to end) → the lane's reviewer.
+   - The architect's spec, plan and tasks go into the pull request description under `## Spec and plan`; the verify step's note goes under `## How it was verified`.
+   - **Without subagents** (your runtime cannot start them): work the same phases yourself, in that order, and keep them apart. Commit the tests alone first, run them and keep their failing output; then implement in later commits without touching those test files; then verify the change as the `/verify` skill describes; then review your own diff against the lane reviewer's brief before opening the pull request.
 3. **Commit and push often.** Every push renews the claim; after the lease (`BOARD_LEASE_HOURS` in `.github/board.env`, 2 h unless changed) without one, the janitor returns the issue to Todo.
    Every commit ends with the trailer `Agent-Executor: <executor>`; CI rejects an agent branch with a commit that lacks it.
 4. **Open the pull request** with the template, quoting the test-writer's failing output. CI and a reviewer from a different model family run on it.

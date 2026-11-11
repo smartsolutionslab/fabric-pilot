@@ -1,0 +1,3 @@
+namespace FabricPilot.Modules.Dashboards.Application.DTOs;
+
+public sealed record DashboardWidgetDto(string Key, string Source, string Visual, int X, int Y, int Width, int Height);

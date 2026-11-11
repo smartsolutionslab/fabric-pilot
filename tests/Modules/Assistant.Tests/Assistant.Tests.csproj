@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FabricPilot.Modules.Assistant.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Modules/Assistant/Assistant.Api/Assistant.Api.csproj" />
+    <Compile Include="../../Fakes/*.cs" Link="Fakes/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

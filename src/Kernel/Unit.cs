@@ -1,0 +1,7 @@
+namespace FabricPilot.Kernel;
+
+/// <summary>The value of an operation that succeeds with nothing to return: <c>Result&lt;Unit, DomainError&gt;</c>.</summary>
+public readonly record struct Unit
+{
+    public static Unit Value => default;
+}

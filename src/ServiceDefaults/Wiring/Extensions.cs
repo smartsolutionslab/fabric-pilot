@@ -1,0 +1,94 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+
+namespace Microsoft.Extensions.Hosting;
+
+/// <summary>Service discovery, resilience, health checks and OpenTelemetry for every service Aspire runs.</summary>
+public static class Extensions
+{
+    private const string HealthEndpointPath = "/health";
+    private const string AlivenessEndpointPath = "/alive";
+
+    /// <summary>The name Microsoft.Extensions.AI's UseOpenTelemetry gives the model's traces and metrics by default.</summary>
+    private const string ModelTelemetry = "Experimental.Microsoft.Extensions.AI";
+
+    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
+    {
+        builder.ConfigureOpenTelemetry();
+        builder.AddDefaultHealthChecks();
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.AddServiceDiscovery();
+        builder.Services.ConfigureHttpClientDefaults(http =>
+        {
+            http.AddStandardResilienceHandler(IdempotentRetry.RetryIdempotentMethodsOnly);
+            http.AddServiceDiscovery();
+        });
+
+        return builder;
+    }
+
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
+    {
+        builder.Logging.AddOpenTelemetry(logging =>
+        {
+            logging.IncludeFormattedMessage = true;
+            logging.IncludeScopes = true;
+        });
+
+        builder.Services.AddOpenTelemetry()
+            .WithMetrics(metrics => metrics
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation()
+                .AddMeter(ModelTelemetry))
+            .WithTracing(tracing => tracing
+                .AddSource(builder.Environment.ApplicationName)
+                .AddSource(ModelTelemetry)
+                .AddSource("Experimental.AGUI.Server")
+                .AddAspNetCoreInstrumentation(options =>
+                    options.Filter = context =>
+                        !context.Request.Path.StartsWithSegments(HealthEndpointPath)
+                        && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath))
+                .AddHttpClientInstrumentation());
+
+        if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+        {
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        }
+
+        return builder;
+    }
+
+    public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services.AddHealthChecks()
+            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+
+        return builder;
+    }
+
+    public static WebApplication MapDefaultEndpoints(this WebApplication app)
+    {
+        Ensure.That(app).IsNotNull();
+
+        // Health endpoints outside Development need a deliberate decision: https://aka.ms/aspire/healthchecks
+        if (app.Environment.IsDevelopment())
+        {
+            // Probed without a token, by Aspire and by orchestrators, so anonymous where they are mapped.
+            app.MapHealthChecks(HealthEndpointPath).AllowAnonymous();
+            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions { Predicate = check => check.Tags.Contains("live") }).AllowAnonymous();
+        }
+
+        return app;
+    }
+}

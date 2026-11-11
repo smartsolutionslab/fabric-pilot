@@ -1,0 +1,15 @@
+namespace FabricPilot.Kernel;
+
+/// <summary>
+/// A <see cref="Result{TValue,TError}"/>'s failure case, built half-made by <c>Failure(error)</c> and matched in a
+/// <c>switch</c> on a result: <c>FailureOutcome&lt;ApiError&gt; failure =&gt; ...</c>. The type argument is the error base
+/// the result declares, not the concrete error: generics are invariant, so each module's <c>&lt;Name&gt;Failures</c>
+/// factories return the base.
+/// </summary>
+public readonly struct FailureOutcome<TError>
+    where TError : notnull
+{
+    internal FailureOutcome(TError error) => Error = error;
+
+    public TError Error { get; }
+}

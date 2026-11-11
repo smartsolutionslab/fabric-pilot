@@ -1,0 +1,53 @@
+using System.ClientModel;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+using OpenAI;
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+public static class AzureOpenAIEmbeddingGenerator
+{
+    /// <summary>
+    /// Registers an embedding model deployed in an Azure OpenAI resource as the project's
+    /// <see cref="IEmbeddingGenerator{TInput, TEmbedding}"/>, with logging and OpenTelemetry around it, through the
+    /// official <c>OpenAI</c> package and Microsoft's adapter (<c>Microsoft.Extensions.AI.OpenAI</c>) calling the
+    /// resource's OpenAI v1 endpoint, <c>&lt;endpoint&gt;/openai/v1/</c>, or an OpenAI-compatible endpoint that already
+    /// ends in <c>/v1</c>, as is. The endpoint, the deployment and the key come from the AppHost's parameters
+    /// <c>azure-openai-endpoint</c>, <c>azure-openai-embedding-deployment</c> and <c>azure-openai-api-key</c>
+    /// (<c>AzureOpenAI:Endpoint</c>, <c>AzureOpenAI:EmbeddingDeployment</c>, <c>AzureOpenAI:ApiKey</c>). They are read
+    /// when the generator is first needed, and a missing one fails there, naming its parameter; registering sends
+    /// nothing.
+    /// </summary>
+    public static EmbeddingGeneratorBuilder<string, Embedding<float>> AddAzureOpenAIEmbeddingGenerator(this IServiceCollection services, IConfiguration configuration)
+    {
+        Ensure.That(configuration).IsNotNull();
+
+        return services.AddEmbeddingGenerator(_ =>
+            {
+                var endpoint = Endpoint(Required(configuration, "AzureOpenAI:Endpoint", "azure-openai-endpoint"));
+                return new OpenAIClient(
+                        new ApiKeyCredential(Required(configuration, "AzureOpenAI:ApiKey", "azure-openai-api-key")),
+                        new OpenAIClientOptions { Endpoint = endpoint })
+                    .GetEmbeddingClient(Required(configuration, "AzureOpenAI:EmbeddingDeployment", "azure-openai-embedding-deployment"))
+                    .AsIEmbeddingGenerator();
+            })
+            .UseLogging()
+            .UseOpenTelemetry();
+    }
+
+    /// <summary>
+    /// An endpoint that already ends in <c>/v1</c>, such as OpenAI's own <c>https://api.openai.com/v1</c>, is an
+    /// OpenAI-compatible v1 endpoint and is used as is; any other is an Azure OpenAI resource, whose v1 endpoint is
+    /// <c>&lt;endpoint&gt;/openai/v1/</c>.
+    /// </summary>
+    private static Uri Endpoint(string configured)
+    {
+        var trimmed = configured.TrimEnd('/');
+        return new Uri(trimmed.EndsWith("/v1", StringComparison.Ordinal) ? trimmed : trimmed + "/openai/v1/");
+    }
+
+    private static string Required(IConfiguration configuration, string key, string parameter) =>
+        configuration[key] is { Length: > 0 } value
+            ? value
+            : throw new InvalidOperationException($"{key} is not set. The AppHost supplies it from its parameter '{parameter}': set that with dotnet user-secrets (Parameters:{parameter}) or in the deployment's secret store.");
+}

@@ -1,0 +1,6 @@
+using FabricPilot.BuildingBlocks.Dashboards;
+
+namespace FabricPilot.Modules.Dashboards.Application.DTOs;
+
+/// <summary>A widget the caller may put on a dashboard: what a saved widget names as its source.</summary>
+public sealed record WidgetDescriptionDto(string Id, string Title, WidgetKind Kind);

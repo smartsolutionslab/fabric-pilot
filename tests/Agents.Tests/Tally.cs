@@ -1,0 +1,6 @@
+using FabricPilot.BuildingBlocks.Messaging;
+
+namespace FabricPilot.Agents.Tests;
+
+/// <summary>A request with absent values inside a list: no tool can describe it, so it cannot become one.</summary>
+public sealed record Tally(IReadOnlyList<Option<int>> Counts) : IQuery<Result<int, ApiError>>;

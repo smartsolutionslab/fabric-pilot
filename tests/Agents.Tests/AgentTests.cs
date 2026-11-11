@@ -1,0 +1,387 @@
+using System.Text.Json;
+using FabricPilot.BuildingBlocks.Agents;
+using FabricPilot.BuildingBlocks.Messaging;
+using FabricPilot.Tests.Fakes;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FabricPilot.Agents.Tests;
+
+/// <summary>
+/// A query runs the sample agent; the stand-in model asks for a tool call, the tool's query goes through the
+/// dispatcher to its handler, and the agent answers with what the tool said. No test calls a real model.
+/// </summary>
+public sealed class AgentTests
+{
+    [Fact]
+    public async Task A_query_runs_the_agent_whose_tool_call_goes_through_the_dispatcher_and_the_agent_answers_with_its_result()
+    {
+        using var model = new ToolCallingChatClient("count_words", new Dictionary<string, object?> { ["text"] = "one two three" });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("How many words are in 'one two three'?"), TestContext.Current.CancellationToken);
+
+        answer.IsSuccess.ShouldBeTrue();
+        answer.Value.ShouldBe("The tool said: 3");
+        dispatcher.Requests.ShouldBe([new AskAboutWords("How many words are in 'one two three'?"), new CountWords("one two three")]);
+        model.Offered[0].ShouldContain("count_words");
+    }
+
+    [Fact]
+    public void A_use_case_is_offered_under_its_name_with_its_record_as_the_input_schema()
+    {
+        var tool = DispatcherTool.For<CountWords>(new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider())), "Counts the words of a text.");
+
+        tool.Name.ShouldBe("count_words");
+        tool.Description.ShouldBe("Counts the words of a text.");
+        var properties = tool.JsonSchema.GetProperty("properties");
+        properties.EnumerateObject().Select(property => property.Name).ShouldBe(["text"]);
+        properties.GetProperty("text").GetProperty("type").GetString().ShouldBe("string");
+    }
+
+    [Fact]
+    public async Task A_failed_result_reaches_the_model_as_its_error_code()
+    {
+        using var model = new ToolCallingChatClient("count_words", new Dictionary<string, object?> { ["text"] = " " });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("How many words are in ' '?"), TestContext.Current.CancellationToken);
+
+        answer.Value.ShouldStartWith("The tool said: Failed: samples.nothing-to-count");
+    }
+
+    [Fact]
+    public async Task Arguments_that_do_not_fit_the_request_never_reach_its_handler_and_the_model_is_told()
+    {
+        using var model = new ToolCallingChatClient("count_words", new Dictionary<string, object?> { ["words"] = 3 });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("How many words?"), TestContext.Current.CancellationToken);
+
+        answer.Value.ShouldStartWith("The tool said: The arguments are not a CountWords");
+        dispatcher.Requests.ShouldNotContain(request => request is CountWords);
+    }
+
+    [Fact]
+    public void A_paged_query_is_offered_with_its_page_and_page_size_as_whole_numbers_within_their_bounds()
+    {
+        var tool = DispatcherTool.For<ListWords>(new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider())), "Lists the words of a text.");
+
+        var properties = tool.JsonSchema.GetProperty("properties");
+        foreach (var (name, maximum) in new[] { ("page", Page.Maximum), ("pageSize", PageSize.Maximum) })
+        {
+            var property = properties.GetProperty(name);
+            property.GetProperty("type").GetString().ShouldBe("integer", property.GetRawText());
+            property.GetProperty("minimum").GetInt32().ShouldBe(1, property.GetRawText());
+            property.GetProperty("maximum").GetInt32().ShouldBe(maximum, property.GetRawText());
+        }
+    }
+
+    [Fact]
+    public async Task A_paged_query_called_with_whole_numbers_answers_that_page_through_the_dispatcher()
+    {
+        using var model = new ToolCallingChatClient("list_words", new Dictionary<string, object?> { ["text"] = "a b c d e", ["page"] = 2, ["pageSize"] = 2 });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("Which words come third and fourth in 'a b c d e'?"), TestContext.Current.CancellationToken);
+
+        answer.Value.ShouldBe("The tool said: {\"items\":[\"c\",\"d\"],\"totalCount\":5,\"page\":2,\"pageSize\":2}");
+        var request = dispatcher.Requests.OfType<ListWords>().ShouldHaveSingleItem();
+        request.Page.Value.ShouldBe(2);
+        request.PageSize.Value.ShouldBe(2);
+    }
+
+    [Fact]
+    public void A_page_that_may_be_absent_is_offered_as_a_whole_number_within_its_bounds_or_null()
+    {
+        var tool = DispatcherTool.For<BrowseWords>(new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider())), "Browses the words of a text.");
+
+        var page = tool.JsonSchema.GetProperty("properties").GetProperty("page");
+        page.GetProperty("type").EnumerateArray().Select(type => type.GetString()).ShouldBe(["integer", "null"], ignoreOrder: true, customMessage: page.GetRawText());
+        page.GetProperty("minimum").GetInt32().ShouldBe(1, page.GetRawText());
+        page.GetProperty("maximum").GetInt32().ShouldBe(Page.Maximum, page.GetRawText());
+        tool.JsonSchema.GetProperty("properties").GetProperty("pageSize").GetProperty("type").GetString().ShouldBe("integer");
+    }
+
+    [Fact]
+    public async Task A_page_that_may_be_absent_reaches_the_handler_as_null_when_the_model_passes_null()
+    {
+        using var model = new ToolCallingChatClient("unused", new Dictionary<string, object?>());
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+        var tool = DispatcherTool.For<BrowseWords>(dispatcher, "Browses the words of a text.");
+
+        var answer = await tool.InvokeAsync(
+            [with(new Dictionary<string, object?> { ["text"] = "a b c", ["page"] = null, ["pageSize"] = 2 })],
+            TestContext.Current.CancellationToken);
+
+        answer?.ToString().ShouldBe("{\"items\":[\"a\",\"b\"],\"totalCount\":3,\"page\":1,\"pageSize\":2}");
+        dispatcher.Requests.OfType<BrowseWords>().ShouldHaveSingleItem().Page.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_page_out_of_its_bounds_is_refused_before_dispatch_and_the_model_is_told_the_bounds()
+    {
+        using var model = new ToolCallingChatClient("list_words", new Dictionary<string, object?> { ["text"] = "a b c", ["page"] = 0, ["pageSize"] = 2 });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("Which words are in 'a b c'?"), TestContext.Current.CancellationToken);
+
+        answer.Value.ShouldStartWith("The tool said: The arguments are not a ListWords");
+        answer.Value.ShouldContain($"from 1 to {Page.Maximum}");
+        dispatcher.Requests.ShouldNotContain(request => request is ListWords);
+    }
+
+    [Fact]
+    public async Task A_page_given_as_an_object_is_refused_and_the_agents_run_goes_on()
+    {
+        Dictionary<string, object?> arguments = new()
+        {
+            ["text"] = "a b c",
+            ["page"] = new Dictionary<string, object?> { ["value"] = 1 },
+            ["pageSize"] = new Dictionary<string, object?> { ["value"] = 2 },
+        };
+        using var model = new ToolCallingChatClient("list_words", arguments);
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("Which words are in 'a b c'?"), TestContext.Current.CancellationToken);
+
+        answer.IsSuccess.ShouldBeTrue();
+        answer.Value.ShouldStartWith("The tool said: The arguments are not a ListWords");
+        dispatcher.Requests.ShouldNotContain(request => request is ListWords);
+    }
+
+    [Fact]
+    public async Task Arguments_no_json_can_build_the_request_from_are_refused_before_dispatch()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+        var tool = DispatcherTool.For<FindShelf>(dispatcher, "Finds a shelf.");
+
+        var answer = await tool.InvokeAsync(
+            [with(new Dictionary<string, object?> { ["code"] = new Dictionary<string, object?> { ["value"] = "A1" } })],
+            TestContext.Current.CancellationToken);
+
+        answer?.ToString().ShouldNotBeNull().ShouldStartWith("The arguments are not a FindShelf");
+        dispatcher.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Arguments_a_constructor_refuses_are_refused_before_dispatch()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+        var tool = DispatcherTool.For<LabelShelf>(dispatcher, "Labels a shelf.");
+
+        var answer = await tool.InvokeAsync(
+            [with(new Dictionary<string, object?> { ["label"] = new Dictionary<string, object?> { ["value"] = " " } })],
+            TestContext.Current.CancellationToken);
+
+        answer?.ToString().ShouldNotBeNull().ShouldStartWith("The arguments are not a LabelShelf");
+        dispatcher.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task An_absent_answer_reaches_the_model_as_null()
+    {
+        using var model = new ToolCallingChatClient("longest_word", new Dictionary<string, object?> { ["text"] = " ", ["atLeast"] = null });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("Which word is the longest in ' '?"), TestContext.Current.CancellationToken);
+
+        answer.Value.ShouldBe("The tool said: null");
+        dispatcher.Requests.ShouldContain(new LongestWord(" ", Option<int>.None));
+    }
+
+    [Fact]
+    public async Task An_optional_argument_is_offered_as_its_value_or_null_and_reaches_the_handler_when_given()
+    {
+        using var model = new ToolCallingChatClient("longest_word", new Dictionary<string, object?> { ["text"] = "a bb cccc", ["atLeast"] = 2 });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+        var schema = DispatcherTool.For<LongestWord>(dispatcher, "Finds the longest word.").JsonSchema.GetProperty("properties").GetProperty("atLeast");
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("Which word of 'a bb cccc' is the longest?"), TestContext.Current.CancellationToken);
+
+        ValueOrNull(schema).GetProperty("type").GetString().ShouldBe("integer");
+        answer.Value.ShouldBe("The tool said: cccc");
+        dispatcher.Requests.ShouldContain(new LongestWord("a bb cccc", Option<int>.Some(2)));
+    }
+
+    [Fact]
+    public async Task An_omitted_optional_argument_is_refused_before_dispatch_and_the_model_is_told()
+    {
+        using var model = new ToolCallingChatClient("longest_word", new Dictionary<string, object?> { ["text"] = "a bb cccc" });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("Which word of 'a bb cccc' is the longest?"), TestContext.Current.CancellationToken);
+
+        answer.Value.ShouldStartWith("The tool said: The arguments are not a LongestWord");
+        answer.Value.ShouldContain("atLeast");
+        dispatcher.Requests.ShouldNotContain(request => request is LongestWord);
+    }
+
+    [Fact]
+    public void A_request_that_contains_itself_as_an_option_is_offered_with_a_schema_that_ends()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+
+        var schema = DispatcherTool.For<Trail>(dispatcher, "Follows a trail.").JsonSchema;
+
+        var next = Resolved(schema, ValueOrNull(schema.GetProperty("properties").GetProperty("next")));
+        next.GetProperty("properties").GetProperty("step").GetProperty("type").GetString().ShouldBe("string");
+        References(schema).ShouldAllBe(reference => Resolves(schema, reference));
+    }
+
+    [Fact]
+    public void An_optional_record_with_repeated_properties_keeps_its_references_resolvable()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+
+        var schema = DispatcherTool.For<MatchPair>(dispatcher, "Matches a pair.").JsonSchema;
+
+        var pair = Resolved(schema, ValueOrNull(schema.GetProperty("properties").GetProperty("pair")));
+        foreach (var item in new[] { "first", "second" })
+        {
+            Resolved(schema, pair.GetProperty("properties").GetProperty(item)).GetProperty("properties").GetProperty("name").GetProperty("type").GetString().ShouldBe("string", item);
+        }
+
+        References(schema).ShouldAllBe(reference => Resolves(schema, reference));
+    }
+
+    [Fact]
+    public void A_request_with_an_option_inside_a_collection_cannot_become_a_tool()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+
+        var refused = Should.Throw<InvalidOperationException>(() => DispatcherTool.For<Tally>(dispatcher, "Tallies the counts."));
+
+        refused.Message.ShouldContain("Tally has an Option inside a collection or dictionary at Counts");
+    }
+
+    [Fact]
+    public async Task An_optional_argument_with_a_constructor_default_is_still_required()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+        var tool = DispatcherTool.For<Search>(dispatcher, "Searches.");
+
+        var answer = await tool.InvokeAsync([with(new Dictionary<string, object?> { ["text"] = "invoices" })], TestContext.Current.CancellationToken);
+
+        tool.JsonSchema.GetProperty("required").EnumerateArray().Select(name => name.GetString()).ShouldBe(["text", "limit"], ignoreOrder: true);
+        answer?.ToString().ShouldNotBeNull().ShouldStartWith("The arguments are not a Search");
+        dispatcher.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_request_with_a_collection_of_options_by_inheritance_cannot_become_a_tool()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+
+        var refused = Should.Throw<InvalidOperationException>(() => DispatcherTool.For<Budget>(dispatcher, "Checks a budget."));
+
+        refused.Message.ShouldContain("Budget has an Option inside a collection or dictionary at Amounts");
+    }
+
+    [Fact]
+    public void A_request_with_a_list_of_inherited_collections_of_options_cannot_become_a_tool()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+
+        var refused = Should.Throw<InvalidOperationException>(() => DispatcherTool.For<Ledger>(dispatcher, "Totals a ledger."));
+
+        refused.Message.ShouldContain("Ledger has an Option inside a collection or dictionary at Batches");
+    }
+
+    [Fact]
+    public void An_optional_enum_admits_its_names_and_null()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+
+        var status = DispatcherTool.For<FindByStatus>(dispatcher, "Finds by status.").JsonSchema.GetProperty("properties").GetProperty("status");
+
+        ValueOrNull(status).GetProperty("enum").EnumerateArray().Select(name => name.GetString()).ShouldBe(["Open", "Closed"]);
+    }
+
+    [Fact]
+    public void Only_a_command_or_a_query_becomes_a_tool()
+    {
+        var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
+
+        var refused = Should.Throw<InvalidOperationException>(() => DispatcherTool.For<NothingToCount>(dispatcher, "Not a use case."));
+
+        refused.Message.ShouldContain("is not a command or a query");
+    }
+
+    /// <summary>The value's schema of an optional property, which must be <c>anyOf: [value, {"type": "null"}]</c>.</summary>
+    private static JsonElement ValueOrNull(JsonElement property)
+    {
+        var choices = property.GetProperty("anyOf").EnumerateArray().ToList();
+        choices.Count.ShouldBe(2, property.GetRawText());
+        choices.ShouldContain(choice => choice.GetRawText() == "{\"type\":\"null\"}", property.GetRawText());
+        return choices.Single(choice => choice.GetRawText() != "{\"type\":\"null\"}");
+    }
+
+    /// <summary>The schema a node stands for: the node, or what its <c>$ref</c> points at in the tool's schema.</summary>
+    private static JsonElement Resolved(JsonElement root, JsonElement node) =>
+        node.ValueKind == JsonValueKind.Object && node.TryGetProperty("$ref", out var reference) ? Pointed(root, reference.GetString()!)!.Value : node;
+
+    private static bool Resolves(JsonElement root, string reference) => Pointed(root, reference) is not null;
+
+    /// <summary>The node a local JSON pointer (<c>#/properties/first</c>) names, or null when it names none.</summary>
+    private static JsonElement? Pointed(JsonElement root, string reference)
+    {
+        if (!reference.StartsWith('#'))
+        {
+            return null;
+        }
+
+        var node = root;
+        foreach (var segment in reference[1..].Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var name = segment.Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal);
+            if (node.ValueKind == JsonValueKind.Object && node.TryGetProperty(name, out var child))
+            {
+                node = child;
+            }
+            else if (node.ValueKind == JsonValueKind.Array && int.TryParse(name, System.Globalization.CultureInfo.InvariantCulture, out var index) && index < node.GetArrayLength())
+            {
+                node = node[index];
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        return node;
+    }
+
+    /// <summary>Every <c>$ref</c> in a schema.</summary>
+    private static IEnumerable<string> References(JsonElement node) => node.ValueKind switch
+    {
+        JsonValueKind.Object => node.EnumerateObject().SelectMany(property =>
+            property.Name == "$ref" && property.Value.ValueKind == JsonValueKind.String ? [property.Value.GetString()!] : References(property.Value)),
+        JsonValueKind.Array => node.EnumerateArray().SelectMany(References),
+        _ => [],
+    };
+
+    /// <summary>What the host provides, with the stand-in model and a dispatcher that keeps what it sends.</summary>
+    private static ServiceProvider Services(IChatClient model) =>
+        new ServiceCollection()
+            .AddSingleton(model)
+            .AddScoped<Dispatcher>()
+            .AddScoped<RecordingDispatcher>(provider => new RecordingDispatcher(provider.GetRequiredService<Dispatcher>()))
+            .AddScoped<IDispatcher>(provider => provider.GetRequiredService<RecordingDispatcher>())
+            .AddScoped<IQueryHandler<AskAboutWords, Result<string, ApiError>>, AskAboutWordsHandler>()
+            .AddScoped<IQueryHandler<CountWords, Result<int, ApiError>>, CountWordsHandler>()
+            .AddScoped<IQueryHandler<ListWords, Result<PagedResult<string>, ApiError>>, ListWordsHandler>()
+            .AddScoped<IQueryHandler<BrowseWords, Result<PagedResult<string>, ApiError>>, BrowseWordsHandler>()
+            .AddScoped<IQueryHandler<LongestWord, Result<Option<string>, ApiError>>, LongestWordHandler>()
+            .BuildServiceProvider();
+}

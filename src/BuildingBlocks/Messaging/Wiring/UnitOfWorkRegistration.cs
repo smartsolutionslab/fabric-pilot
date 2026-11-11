@@ -1,0 +1,31 @@
+using FabricPilot.BuildingBlocks.Messaging;
+using FabricPilot.BuildingBlocks.Modules;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+public static class UnitOfWorkRegistration
+{
+    /// <summary>
+    /// Registers the module's unit of work: the class in its Infrastructure project implementing I&lt;Module&gt;UnitOfWork.
+    /// It takes the time it stamps on published events from TimeProvider, which the host's service defaults register; a
+    /// module's tests that register only the module get the system clock.
+    /// </summary>
+    public static IServiceCollection AddModuleUnitOfWork<TModule>(this IServiceCollection services)
+        where TModule : IModule
+    {
+        var registrations = ModuleAssemblies.Of<TModule>("Infrastructure").GetTypes()
+            .Where(type => type is { IsClass: true, IsAbstract: false })
+            .SelectMany(type => type.GetInterfaces()
+                .Where(contract => contract != typeof(IUnitOfWork) && typeof(IUnitOfWork).IsAssignableFrom(contract))
+                .Select(contract => (contract, type)));
+
+        services.TryAddSingleton(TimeProvider.System);
+        foreach (var (contract, implementation) in registrations)
+        {
+            services.AddScoped(contract, implementation);
+        }
+
+        return services;
+    }
+}

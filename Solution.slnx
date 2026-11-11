@@ -8,9 +8,29 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
+    <Project Path="tests/Kernel/Paging.Tests/Paging.Tests.csproj" />
   </Folder>
+  <Project Path="tests/Kernel/Absence.Tests/Absence.Tests.csproj" />
   <Project Path="src/MigrationRunner/MigrationRunner.csproj" />
+  <Project Path="tests/Kernel/Guards.Tests/Guards.Tests.csproj" />
+  <Project Path="tests/Agents.Tests/Agents.Tests.csproj" />
+
+  <Project Path="tests/Evals/Evals.csproj" />
+  <Project Path="tests/Evals.Tests/Evals.Tests.csproj" />
+
+  <Project Path="tests/Rag.Tests/Rag.Tests.csproj" />
+  <Project Path="tests/Kernel/Results.Tests/Results.Tests.csproj" />
   <Project Path="tests/Integration.Tests/Integration.Tests.csproj" />
   <Project Path="src/Host/Host.csproj" />
   <Project Path="src/BuildingBlocks.Domain/BuildingBlocks.Domain.csproj" />
+  <Project Path="src/Modules/Assistant/Assistant.Domain/Assistant.Domain.csproj" />
+  <Project Path="src/Modules/Assistant/Assistant.Application/Assistant.Application.csproj" />
+  <Project Path="src/Modules/Assistant/Assistant.Infrastructure/Assistant.Infrastructure.csproj" />
+  <Project Path="src/Modules/Assistant/Assistant.Api/Assistant.Api.csproj" />
+  <Project Path="tests/Modules/Assistant.Tests/Assistant.Tests.csproj" />
+  <Project Path="src/Modules/Dashboards/Dashboards.Domain/Dashboards.Domain.csproj" />
+  <Project Path="src/Modules/Dashboards/Dashboards.Application/Dashboards.Application.csproj" />
+  <Project Path="src/Modules/Dashboards/Dashboards.Infrastructure/Dashboards.Infrastructure.csproj" />
+  <Project Path="src/Modules/Dashboards/Dashboards.Api/Dashboards.Api.csproj" />
+  <Project Path="tests/Modules/Dashboards.Tests/Dashboards.Tests.csproj" />
 </Solution>

@@ -1,0 +1,278 @@
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
+using FabricPilot.BuildingBlocks.Messaging;
+using Microsoft.Extensions.AI;
+
+namespace FabricPilot.BuildingBlocks.Agents;
+
+/// <summary>
+/// A command or query as a function the model may call. The arguments are the model's output, untrusted input: they
+/// become the request record or the model is told they do not fit, and the handler validates them as it would a request
+/// body. The function holds no logic of its own.
+/// </summary>
+internal sealed class UseCaseFunction : AIFunction
+{
+    /// <summary>
+    /// Web defaults, but a missing argument or a null where the record allows none is refused, not defaulted; a
+    /// <see cref="Page"/> and a <see cref="PageSize"/> are whole numbers within their bounds; an absent
+    /// <see cref="Option{T}"/> is <c>null</c>, in the arguments and in the answer.
+    /// </summary>
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        RespectRequiredConstructorParameters = true,
+        RespectNullableAnnotations = true,
+        Converters = { new PageJsonConverter(), new PageSizeJsonConverter(), new OptionJsonConverterFactory() },
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { OptionsAreRequired } },
+    };
+
+    /// <summary>The same options for the schema, which describe an <see cref="Option{T}"/> property as its value's type.</summary>
+    private static readonly JsonSerializerOptions SchemaJson = new(Json)
+    {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { OptionsAreRequired, OptionsAsTheirValues } },
+    };
+
+    private readonly Type request;
+    private readonly Type result;
+    private readonly bool readsOnly;
+    private readonly IDispatcher dispatcher;
+
+    public UseCaseFunction(Type request, IDispatcher dispatcher, string description)
+    {
+        var problems = DispatcherTool.Problems(request);
+        if (problems.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(" ", problems));
+        }
+
+        var contracts = DispatcherTool.Contracts(request);
+
+        this.request = request;
+        this.dispatcher = dispatcher;
+        result = contracts[0].GetGenericArguments()[0];
+        readsOnly = contracts[0].GetGenericTypeDefinition() == typeof(IQuery<>);
+        Name = SnakeCase(request.Name);
+        Description = description;
+        JsonSchema = Schema(request);
+    }
+
+    public override string Name { get; }
+
+    public override string Description { get; }
+
+    public override JsonElement JsonSchema { get; }
+
+    public override JsonSerializerOptions JsonSerializerOptions => Json;
+
+    protected override async ValueTask<object?> InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
+    {
+        Ensure.That(arguments).IsNotNull();
+
+        object? message;
+        try
+        {
+            message = JsonSerializer.SerializeToElement(new Dictionary<string, object?>(arguments), Json).Deserialize(request, Json);
+        }
+        catch (JsonException exception)
+        {
+            return Refused(exception);
+        }
+        catch (NotSupportedException exception)
+        {
+            // The record, or a type in it, has no constructor JSON can call: no arguments can build it.
+            return Refused(exception);
+        }
+        catch (ArgumentException exception)
+        {
+            // A constructor of the record, or of a value in it, refused what the model gave.
+            return Refused(exception);
+        }
+
+        if (message is null)
+        {
+            return $"The arguments are not a {request.Name}.";
+        }
+
+        var dispatch = typeof(IDispatcher)
+            .GetMethod(readsOnly ? nameof(IDispatcher.QueryAsync) : nameof(IDispatcher.SendAsync))!
+            .MakeGenericMethod(result);
+        var handled = (Task)dispatch.Invoke(dispatcher, [message, cancellationToken])!;
+        await handled;
+        return Answer(handled.GetType().GetProperty(nameof(Task<object>.Result))!.GetValue(handled)!);
+    }
+
+    /// <summary>The arguments did not become the request: the model is told why, and the request is not sent.</summary>
+    private string Refused(Exception exception) => $"The arguments are not a {request.Name}: {exception.Message}";
+
+    /// <summary>
+    /// A <see cref="Page"/> or a <see cref="PageSize"/> as the whole number within its bounds that the converters read, or
+    /// null where the property may be null; the converters are opaque to schema generation, which would otherwise describe
+    /// the record behind them.
+    /// </summary>
+    private static JsonNode Paging(AIJsonSchemaCreateContext context, JsonNode node)
+    {
+        var maximum = context.TypeInfo.Type == typeof(Page) ? Page.Maximum : context.TypeInfo.Type == typeof(PageSize) ? PageSize.Maximum : 0;
+        if (maximum == 0)
+        {
+            return node;
+        }
+
+        JsonNode type = context.PropertyInfo is { IsSetNullable: true } ? new JsonArray("integer", "null") : "integer";
+        return new JsonObject { ["type"] = type, ["minimum"] = 1, ["maximum"] = maximum };
+    }
+
+    /// <summary>A Result's value as JSON, or its ApiError as text starting with the error's code.</summary>
+    private static object Answer(object outcome)
+    {
+        var type = outcome.GetType();
+        if (!type.IsGenericType || type.GetGenericTypeDefinition() != typeof(Result<,>))
+        {
+            return JsonSerializer.SerializeToElement(outcome, type, Json);
+        }
+
+        if ((bool)type.GetProperty(nameof(Result<object, object>.IsSuccess))!.GetValue(outcome)!)
+        {
+            var value = type.GetProperty(nameof(Result<object, object>.Value))!.GetValue(outcome);
+            return JsonSerializer.SerializeToElement(value, type.GetGenericArguments()[0], Json);
+        }
+
+        var error = type.GetProperty(nameof(Result<object, object>.Error))!.GetValue(outcome)!;
+        return error is ApiError apiError
+            ? $"Failed: {apiError.Code}: {apiError.Message}"
+            : $"Failed: {JsonSerializer.Serialize(error, error.GetType(), Json)}";
+    }
+
+    /// <summary>
+    /// The record's schema, in one pass: an <see cref="Option{T}"/> property is written as its value's schema (the
+    /// converter is opaque to schema generation), then made <c>anyOf: [value, {"type": "null"}]</c>. Wrapping moves the
+    /// value one level down, so every <c>$ref</c> into it is rebased to where it now is.
+    /// </summary>
+    private static JsonElement Schema(Type request)
+    {
+        List<string[]> optional = [];
+        var inference = new AIJsonSchemaCreateOptions
+        {
+            TransformSchemaNode = (context, node) =>
+            {
+                node = Paging(context, node);
+                if (context.PropertyInfo?.AttributeProvider is not PropertyInfo { PropertyType: var type } || !IsOption(type))
+                {
+                    return node;
+                }
+
+                optional.Add(context.Path.ToArray());
+                return new JsonObject { ["anyOf"] = new JsonArray(node, new JsonObject { ["type"] = "null" }) };
+            },
+        };
+        var schema = JsonSerializer.SerializeToNode(AIJsonUtilities.CreateJsonSchema(request, serializerOptions: SchemaJson, inferenceOptions: inference))!;
+        Rebase(schema, optional);
+        return JsonSerializer.SerializeToElement(schema);
+    }
+
+    /// <summary>
+    /// An <see cref="Option{T}"/> argument must be present, <c>null</c> when absent, even when its constructor parameter
+    /// has a default: a model that leaves it out has not said it is absent.
+    /// </summary>
+    private static void OptionsAreRequired(JsonTypeInfo typeInfo)
+    {
+        if (typeInfo.Kind != JsonTypeInfoKind.Object)
+        {
+            return;
+        }
+
+        foreach (var property in typeInfo.Properties.Where(property => IsOption(property.PropertyType)))
+        {
+            property.IsRequired = true;
+        }
+    }
+
+    /// <summary>Describes an <see cref="Option{T}"/> property as a property of its value's type, for the schema only.</summary>
+    private static void OptionsAsTheirValues(JsonTypeInfo typeInfo)
+    {
+        if (typeInfo.Kind != JsonTypeInfoKind.Object)
+        {
+            return;
+        }
+
+        for (var index = 0; index < typeInfo.Properties.Count; index++)
+        {
+            var property = typeInfo.Properties[index];
+            if (!IsOption(property.PropertyType))
+            {
+                continue;
+            }
+
+            var value = typeInfo.CreateJsonPropertyInfo(property.PropertyType.GetGenericArguments()[0], property.Name);
+            value.AttributeProvider = property.AttributeProvider;
+            value.IsRequired = true;
+            value.IsGetNullable = false;
+            value.IsSetNullable = false;
+            value.Get = _ => null;
+            value.Set = (_, _) => { };
+            typeInfo.Properties[index] = value;
+        }
+    }
+
+    /// <summary>
+    /// Points every <c>$ref</c> that passes through a wrapped property at the value inside its <c>anyOf</c>:
+    /// <c>#/properties/pair/properties/first</c> becomes <c>#/properties/pair/anyOf/0/properties/first</c>.
+    /// </summary>
+    private static void Rebase(JsonNode? node, List<string[]> optional)
+    {
+        if (node is JsonArray array)
+        {
+            foreach (var item in array)
+            {
+                Rebase(item, optional);
+            }
+        }
+
+        if (node is not JsonObject schema)
+        {
+            return;
+        }
+
+        if (schema["$ref"] is JsonValue reference && reference.GetValue<string>() is var pointer && pointer.StartsWith("#/", StringComparison.Ordinal))
+        {
+            var segments = pointer[2..].Split('/');
+            List<string> rebased = [];
+            for (var index = 0; index < segments.Length; index++)
+            {
+                rebased.Add(segments[index]);
+                if (optional.Any(path => path.AsSpan().SequenceEqual(segments.AsSpan(0, index + 1))))
+                {
+                    rebased.Add("anyOf");
+                    rebased.Add("0");
+                }
+            }
+
+            schema["$ref"] = "#/" + string.Join('/', rebased);
+        }
+
+        foreach (var (_, child) in schema)
+        {
+            Rebase(child, optional);
+        }
+    }
+
+    private static bool IsOption(Type type) => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Option<>);
+
+    /// <summary><c>FindInvoice</c> becomes <c>find_invoice</c>.</summary>
+    private static string SnakeCase(string name)
+    {
+        var snake = new StringBuilder();
+        foreach (var character in name)
+        {
+            if (char.IsUpper(character) && snake.Length > 0)
+            {
+                snake.Append('_');
+            }
+
+            snake.Append(char.ToLowerInvariant(character));
+        }
+
+        return snake.ToString();
+    }
+}
