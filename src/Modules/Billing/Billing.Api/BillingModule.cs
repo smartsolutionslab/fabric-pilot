@@ -9,7 +9,7 @@ namespace FabricPilot.Modules.Billing.Api;
 public sealed class BillingModule : IModule
 {
     public void AddServices(IServiceCollection services, IConfiguration configuration) =>
-        services.AddModuleInfrastructure<BillingModule>(configuration);
+        services.AddModuleInfrastructure<BillingModule>(configuration).AddBillingStorage();
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup("/billing").MapModuleEndpoints<BillingModule>();

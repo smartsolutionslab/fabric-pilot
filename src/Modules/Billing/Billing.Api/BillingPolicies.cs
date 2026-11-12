@@ -16,6 +16,8 @@ public sealed class BillingPolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(BillingPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        // customer-admin includes customer-user in the realm, so a tenant's admin holds this too.
+        policies.AddPolicy(BillingPolicyNames.ReadInvoices, policy => policy.RequireRole("customer-user"));
         policies.AddPolicy(BillingPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(BillingPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
     }
