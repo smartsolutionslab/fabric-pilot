@@ -1,4 +1,5 @@
 using Aspire.Hosting;
+using Aspire.Hosting.Testing;
 using FabricPilot.BuildingBlocks.Tenancy;
 using FabricPilot.Modules.Contracts.Domain.Contracts;
 using FabricPilot.Modules.Contracts.Infrastructure.Persistence;
