@@ -1,4 +1,6 @@
 using FabricPilot.Modules.Tickets.Application;
+using FabricPilot.Modules.Tickets.Application.DTOs;
+using FabricPilot.Modules.Tickets.Application.Queries.ListTickets;
 using FabricPilot.Modules.Tickets.Domain.Tickets;
 
 namespace FabricPilot.Modules.Tickets.Tests;
@@ -18,13 +20,18 @@ internal sealed class InMemoryTicketStore : ITicketStore
         return Task.FromResult(ticket is null ? Option<Ticket>.None : Option<Ticket>.Some(ticket));
     }
 
-    public Task<PagedResult<Ticket>> ListAsync(Page page, PageSize pageSize, CancellationToken cancellationToken)
+    public Task<PagedResult<TicketSummaryDto>> ListAsync(Sorting<TicketSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken)
     {
+        Ensure.That(sorting).IsNotNull();
         Ensure.That(page).IsNotNull();
         Ensure.That(pageSize).IsNotNull();
 
-        var newestFirst = Saved.OrderByDescending(ticket => ticket.RaisedAt).ThenByDescending(ticket => ticket.Id.Value).ToList();
-        return Task.FromResult(new PagedResult<Ticket>([.. newestFirst.Skip(page.Skip(pageSize)).Take(pageSize.Value)], newestFirst.Count, page.Value, pageSize.Value));
+        var items = Saved.AsQueryable()
+            .SortedBy(sorting)
+            .Skip(page.Skip(pageSize))
+            .Take(pageSize.Value)
+            .Select(TicketMappings.ToTicketSummaryDtoExpression());
+        return Task.FromResult(new PagedResult<TicketSummaryDto>([.. items], Saved.Count, page.Value, pageSize.Value));
     }
 
     public Task SaveAsync(CancellationToken cancellationToken)

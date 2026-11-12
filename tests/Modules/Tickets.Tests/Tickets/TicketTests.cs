@@ -45,7 +45,7 @@ public class TicketTests
         var result = Raise(TicketId.New(), subject, "Description", TicketPriority.Normal, []);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.invalid-subject");
+        result.Error.Value.ShouldBeOfType<InvalidSubject>();
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class TicketTests
         var result = Raise(TicketId.New(), new string('s', Ticket.MaximumSubjectLength + 1), "Description", TicketPriority.Normal, []);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.invalid-subject");
+        result.Error.Value.ShouldBeOfType<InvalidSubject>();
     }
 
     [Theory]
@@ -67,7 +67,7 @@ public class TicketTests
         var result = Raise(TicketId.New(), "Subject", description, TicketPriority.Normal, []);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.invalid-description");
+        result.Error.Value.ShouldBeOfType<InvalidDescription>();
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class TicketTests
         var result = Raise(TicketId.New(), "Subject", new string('d', Ticket.MaximumDescriptionLength + 1), TicketPriority.Normal, []);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.invalid-description");
+        result.Error.Value.ShouldBeOfType<InvalidDescription>();
     }
 
     [Fact]
@@ -93,9 +93,10 @@ public class TicketTests
         var result = Raise(TicketId.New(), "Subject", "Description", TicketPriority.Normal, [File("small.txt", 10), File("huge.iso", Attachment.MaximumSize + 1)]);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.attachment-too-large");
-        result.Error.Message.ShouldContain("huge.iso");
-        result.Error.Message.ShouldContain("10 MB");
+        var tooLarge = result.Error.Value.ShouldBeOfType<AttachmentTooLarge>();
+        tooLarge.FileName.ShouldBe("huge.iso");
+        tooLarge.Message.ShouldContain("huge.iso");
+        tooLarge.Message.ShouldContain("10 MB");
     }
 
     [Fact]
@@ -106,7 +107,7 @@ public class TicketTests
         var result = Raise(TicketId.New(), "Subject", "Description", TicketPriority.Normal, files);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.too-many-attachments");
+        result.Error.Value.ShouldBeOfType<TooManyAttachments>();
     }
 
     [Theory]
@@ -128,7 +129,7 @@ public class TicketTests
         var result = Raise(TicketId.New(), "Subject", "Description", TicketPriority.Normal, [File(fileName, 1)]);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.invalid-attachment-name");
+        result.Error.Value.ShouldBeOfType<InvalidAttachmentName>();
     }
 
     [Fact]
@@ -137,7 +138,7 @@ public class TicketTests
         var result = Raise(TicketId.New(), "Subject", "Description", TicketPriority.Normal, [File(new string('n', Attachment.MaximumFileNameLength + 1), 1)]);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.invalid-attachment-name");
+        result.Error.Value.ShouldBeOfType<InvalidAttachmentName>();
     }
 
     [Fact]
@@ -150,6 +151,6 @@ public class TicketTests
 
     private static AttachmentFile File(string name, long size, string contentType = "application/octet-stream") => new(AttachmentId.New(), name, contentType, size);
 
-    private static Result<Ticket, DomainError> Raise(TicketId id, string subject, string description, TicketPriority priority, IReadOnlyList<AttachmentFile> attachments) =>
+    private static Result<Ticket, TicketError> Raise(TicketId id, string subject, string description, TicketPriority priority, IReadOnlyList<AttachmentFile> attachments) =>
         Ticket.Raise(id, subject, description, priority, attachments, RaisedAt);
 }

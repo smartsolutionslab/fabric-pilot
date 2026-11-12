@@ -102,6 +102,39 @@ public class TicketAttachmentsTests(AspireFixture aspire)
     }
 
     [Fact]
+    public async Task The_list_is_newest_first_unless_another_order_is_asked_for()
+    {
+        using var client = await aspire.CreateHostClientAsync("developer");
+        foreach (var number in Enumerable.Range(1, 2))
+        {
+            using var form = Form($"Sorted {number} {Guid.CreateVersion7()}", "Low");
+            using var raised = await client.PostAsync(Tickets, form, TestContext.Current.CancellationToken);
+            raised.StatusCode.ShouldBe(HttpStatusCode.Created);
+        }
+
+        var newestFirst = RaisedAt(await Json(client, "/tickets/tickets?page=1&pageSize=100"));
+        var oldestFirst = RaisedAt(await Json(client, "/tickets/tickets?page=1&pageSize=100&sortBy=RaisedAt&sortDirection=Ascending"));
+
+        newestFirst.Count.ShouldBeGreaterThan(1);
+        newestFirst.ShouldBe([.. newestFirst.OrderDescending()]);
+        oldestFirst.Count.ShouldBeGreaterThan(1);
+        oldestFirst.ShouldBe([.. oldestFirst.Order()]);
+    }
+
+    [Theory]
+    [InlineData("sortBy=Description")]
+    [InlineData("sortBy=99")]
+    [InlineData("sortDirection=Sideways")]
+    public async Task A_sort_the_list_does_not_offer_is_refused(string sort)
+    {
+        using var client = await aspire.CreateHostClientAsync("developer");
+
+        using var response = await client.GetAsync(new Uri($"/tickets/tickets?{sort}", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task An_anonymous_caller_cannot_raise_a_ticket()
     {
         using var client = aspire.CreateHostClient();
@@ -132,6 +165,9 @@ public class TicketAttachmentsTests(AspireFixture aspire)
 
     /// <summary>Every byte value, over and over: a file whose content a lossy round trip would change.</summary>
     private static byte[] Bytes(int length) => [.. Enumerable.Range(0, length).Select(index => (byte)(index % 256))];
+
+    private static List<DateTimeOffset> RaisedAt(JsonObject list) =>
+        [.. list["items"]!.AsArray().Select(item => item!["raisedAt"]!.GetValue<DateTimeOffset>())];
 
     private static async Task<JsonObject> Json(HttpClient client, string path)
     {
