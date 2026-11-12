@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using FabricPilot.BuildingBlocks.Domain;
 
 namespace FabricPilot.Modules.Contracts.Domain.Contracts;
@@ -54,4 +55,11 @@ public sealed class Contract : AggregateRoot<ContractId>
     /// <summary>Whether the contract renews on a day from <paramref name="today"/> to <see cref="RenewalWindowDays"/> days later.</summary>
     public bool IsUpForRenewal(DateOnly today) =>
         RenewsOn is { } renewsOn && renewsOn >= today && renewsOn <= today.AddDays(RenewalWindowDays);
+
+    /// <summary>The same window as <see cref="IsUpForRenewal"/>, for a query that selects contracts in the database.</summary>
+    public static Expression<Func<Contract, bool>> UpForRenewal(DateOnly today)
+    {
+        var lastDay = today.AddDays(RenewalWindowDays);
+        return contract => contract.RenewsOn >= today && contract.RenewsOn <= lastDay;
+    }
 }
