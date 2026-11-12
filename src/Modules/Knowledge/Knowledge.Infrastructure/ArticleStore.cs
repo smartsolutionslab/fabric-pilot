@@ -26,8 +26,22 @@ public sealed class ArticleStore(KnowledgeDbContext context) : IArticleStore
     public Task<PagedResult<ArticleSummaryDto>> ListAsync(Sorting<ArticleSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken) =>
         PageAsync(context.Set<Article>().AsNoTracking(), sorting, page, pageSize, cancellationToken);
 
-    public Task<PagedResult<ArticleSummaryDto>> SearchPublishedAsync(string search, Sorting<ArticleSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken) =>
-        PageAsync(context.Set<Article>().AsNoTracking().PublishedMatching(search), sorting, page, pageSize, cancellationToken);
+    public Task<PagedResult<ArticleSummaryDto>> SearchPublishedAsync(string search, Sorting<ArticleSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken)
+    {
+        Ensure.That(search).IsNotNull();
+
+        var published = context.Set<Article>().AsNoTracking().Published();
+        var term = search.Trim();
+        if (term.Length == 0)
+        {
+            return PageAsync(published, sorting, page, pageSize, cancellationToken);
+        }
+
+        // The term is matched as typed: % and _ in it are escaped, never wildcards.
+        var pattern = $"%{term.Replace(@"\", @"\\", StringComparison.Ordinal).Replace("%", @"\%", StringComparison.Ordinal).Replace("_", @"\_", StringComparison.Ordinal)}%";
+        var matching = published.Where(article => EF.Functions.ILike(article.Title, pattern, @"\") || EF.Functions.ILike(article.Body, pattern, @"\"));
+        return PageAsync(matching, sorting, page, pageSize, cancellationToken);
+    }
 
     private static async Task<PagedResult<ArticleSummaryDto>> PageAsync(
         IQueryable<Article> articles,
