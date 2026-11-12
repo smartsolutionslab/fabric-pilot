@@ -1,4 +1,5 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -64,4 +65,28 @@ test('the list has no accessibility violations axe can find', async () => {
   const { container } = renderPage();
 
   expect(await axe(container)).toHaveNoViolations();
+});
+
+test('above twenty tickets the list pages through them twenty at a time', async () => {
+  const user = userEvent.setup();
+  vi.mocked(useGetTicketsTicketsQuery).mockReturnValue({
+    data: { ...page, totalCount: 45 },
+    isLoading: false,
+    isError: false,
+  } as never);
+  renderPage();
+
+  expect(screen.getByRole('navigation', { name: 'Pages' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
+
+  await user.click(screen.getByRole('button', { name: 'Next' }));
+
+  expect(useGetTicketsTicketsQuery).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 });
+  expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
+});
+
+test('twenty tickets or fewer need no pages', () => {
+  renderPage();
+
+  expect(screen.queryByRole('navigation', { name: 'Pages' })).not.toBeInTheDocument();
 });
