@@ -29,7 +29,9 @@ interface Problem {
 export function ArticleEditorPage() {
   const { articleId } = useParams();
   const navigate = useNavigate();
-  const { data } = useGetKnowledgeArticlesManageByArticleIdQuery(articleId ? { articleId } : skipToken);
+  const { data, isLoading, isError } = useGetKnowledgeArticlesManageByArticleIdQuery(
+    articleId ? { articleId } : skipToken,
+  );
   // A new article starts empty.
   const article = articleId ? data : undefined;
   const [write, { isLoading: isWriting }] = usePostKnowledgeArticlesMutation();
@@ -40,7 +42,7 @@ export function ArticleEditorPage() {
     handleSubmit,
     reset,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm({ resolver: zodResolver(articleSchema), defaultValues: { title: '', body: '' } });
 
   useEffect(() => {
@@ -77,6 +79,23 @@ export function ArticleEditorPage() {
       refused(failure, 'The article could not be published.');
     }
   };
+
+  if (articleId && isError) {
+    return (
+      <main className="p-4">
+        <p role="alert">The article could not be loaded.</p>
+        <Link to="/knowledge/manage">Back to the articles</Link>
+      </main>
+    );
+  }
+  // The form waits for the article: anything typed before it arrives would be overwritten by it.
+  if (articleId && (isLoading || !article)) {
+    return (
+      <main className="p-4">
+        <p>Loading…</p>
+      </main>
+    );
+  }
 
   const describedBy = (field: FieldPath<ArticleForm>) => (errors[field] ? `${field}-error` : undefined);
   const fieldError = (field: FieldPath<ArticleForm>) =>
@@ -128,11 +147,23 @@ export function ArticleEditorPage() {
             Save
           </Button>
           {article?.state === 'Draft' ? (
-            <Button type="button" variant="outline" disabled={isPublishing} onClick={() => void onPublish()}>
+            // Publishing publishes what is saved, so unsaved changes are saved first.
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPublishing || isDirty}
+              aria-describedby={isDirty ? 'publish-hint' : undefined}
+              onClick={() => void onPublish()}
+            >
               Publish
             </Button>
           ) : null}
         </div>
+        {article?.state === 'Draft' && isDirty ? (
+          <p id="publish-hint" className="text-sm text-muted-foreground">
+            Save your changes before publishing.
+          </p>
+        ) : null}
       </form>
     </main>
   );
