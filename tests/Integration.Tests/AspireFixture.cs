@@ -18,6 +18,9 @@ public sealed class AspireFixture : IAsyncLifetime
 
     private DistributedApplication? app;
 
+    /// <summary>The host's embeddings model, a stand-in a test can slow down.</summary>
+    public FakeEmbeddingsServer Embeddings => embeddings;
+
     public DistributedApplication App => app ?? throw new InvalidOperationException("The application has not started.");
 
     public async ValueTask InitializeAsync()

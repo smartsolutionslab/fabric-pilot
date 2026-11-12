@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -18,6 +19,7 @@ public sealed class FakeEmbeddingsServer : IAsyncDisposable
     private readonly HttpListener listener = new();
     private readonly FakeEmbeddingGenerator generator = new(VectorTables.Dimensions);
     private readonly CancellationTokenSource stopping = new();
+    private readonly ConcurrentDictionary<string, HeldEmbeddings> held = new(StringComparer.OrdinalIgnoreCase);
     private readonly Task serving;
 
     public FakeEmbeddingsServer()
@@ -31,6 +33,17 @@ public sealed class FakeEmbeddingsServer : IAsyncDisposable
 
     /// <summary>The value for the AppHost's parameter <c>azure-openai-endpoint</c>.</summary>
     public string Endpoint { get; }
+
+    /// <summary>
+    /// Holds back the answer to every request whose text contains the word until released, as a slow provider would, so a
+    /// test can act while the host waits in the middle of indexing.
+    /// </summary>
+    public HeldEmbeddings Hold(string word)
+    {
+        var holding = new HeldEmbeddings();
+        held[word] = holding;
+        return holding;
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -100,6 +113,14 @@ public sealed class FakeEmbeddingsServer : IAsyncDisposable
         var request = await JsonNode.ParseAsync(context.Request.InputStream) ?? new JsonObject();
         var inputs = Inputs(request);
         var base64 = request["encoding_format"]?.GetValue<string>() == "base64";
+        foreach (var (word, holding) in held)
+        {
+            if (inputs.Any(input => input.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            {
+                await holding.WaitAsync();
+            }
+        }
+
         var embeddings = await generator.GenerateAsync(inputs);
         var answer = new JsonObject
         {
@@ -117,5 +138,22 @@ public sealed class FakeEmbeddingsServer : IAsyncDisposable
         response.StatusCode = (int)HttpStatusCode.OK;
         response.ContentType = "application/json";
         await JsonSerializer.SerializeAsync(response.OutputStream, answer);
+    }
+
+    /// <summary>An answer held back: <see cref="Arrived"/> completes once a request for it came in, and disposing releases it.</summary>
+    public sealed class HeldEmbeddings : IDisposable
+    {
+        private readonly TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Arrived => arrived.Task;
+
+        public void Dispose() => released.TrySetResult();
+
+        internal Task WaitAsync()
+        {
+            arrived.TrySetResult();
+            return released.Task;
+        }
     }
 }

@@ -258,6 +258,36 @@ public class ArticleCommandsTests
         unitOfWork.Commits.ShouldBe(5);
     }
 
+    [Fact]
+    public async Task Publishing_an_article_another_change_holds_answers_409_at_once_and_changes_nothing()
+    {
+        var id = (await Write("Title", "Body")).Value;
+        locks.HeldElsewhere.Add(new ArticleId(id));
+
+        var result = await Publish(id);
+
+        result.Error.Code.ShouldBe("knowledge.article-being-changed");
+        result.Error.Status.ShouldBe(HttpStatusCode.Conflict);
+        articles.Saved.Single().State.ShouldBe(ArticleState.Draft);
+        index.Chunks.ShouldBeEmpty();
+        unitOfWork.Published.ShouldBeEmpty();
+        unitOfWork.Commits.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Editing_an_article_another_change_holds_answers_409_at_once_and_changes_nothing()
+    {
+        var id = (await Write("Title", "Body")).Value;
+        locks.HeldElsewhere.Add(new ArticleId(id));
+
+        var result = await Edit(id, "New title", "New body");
+
+        result.Error.Code.ShouldBe("knowledge.article-being-changed");
+        result.Error.Status.ShouldBe(HttpStatusCode.Conflict);
+        articles.Saved.Single().Title.ShouldBe("Title");
+        unitOfWork.Commits.ShouldBe(1);
+    }
+
     private Task<Result<Guid, ApiError>> Write(string title, string body) =>
         new WriteArticleHandler(articles, unitOfWork, time).HandleAsync(new WriteArticle(title, body), TestContext.Current.CancellationToken);
 

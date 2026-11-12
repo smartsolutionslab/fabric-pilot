@@ -20,6 +20,9 @@ public class KnowledgeArticlesTests(AspireFixture aspire)
 
     private const string ManagedArticles = "/knowledge/articles/manage";
 
+    /// <summary>An article id for the anonymous calls, which are refused before anything looks it up.</summary>
+    private const string AnyArticle = "0193c0de-0000-7000-8000-000000000011";
+
     [Fact]
     public async Task A_draft_staff_write_is_listed_for_staff_and_invisible_to_every_tenants_users()
     {
@@ -143,10 +146,34 @@ public class KnowledgeArticlesTests(AspireFixture aspire)
         (await JsonAsync(staff, $"{ManagedArticles}/{id}"))["state"]!.GetValue<string>().ShouldBe("Draft");
     }
 
+    [Fact]
+    public async Task A_change_to_an_article_a_publish_is_still_indexing_answers_409_at_once()
+    {
+        var word = UniqueWord();
+        using var staff = await aspire.CreateHostClientAsync("staff");
+        var id = await WriteAsync(staff, $"Busy {word}", $"Text {word}.");
+        using var slowEmbeddings = aspire.Embeddings.Hold(word);
+        var publishing = PublishAsync(staff, id);
+        await slowEmbeddings.Arrived.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        using var edit = await staff.PutAsJsonAsync(new Uri($"{Articles}/{id}", UriKind.Relative), new { title = $"Busy {word}", body = "Changed meanwhile." }, TestContext.Current.CancellationToken);
+        using var publishAgain = await staff.PostAsync(new Uri($"{Articles}/{id}/publish", UriKind.Relative), null, TestContext.Current.CancellationToken);
+        slowEmbeddings.Dispose();
+        await publishing;
+
+        edit.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await edit.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("knowledge.article-being-changed");
+        publishAgain.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await JsonAsync(staff, $"{ManagedArticles}/{id}"))["body"]!.GetValue<string>().ShouldBe($"Text {word}.");
+    }
+
     [Theory]
     [InlineData("GET", Articles)]
     [InlineData("POST", Articles)]
     [InlineData("GET", ManagedArticles)]
+    [InlineData("PUT", $"{Articles}/{AnyArticle}")]
+    [InlineData("POST", $"{Articles}/{AnyArticle}/publish")]
+    [InlineData("GET", $"{ManagedArticles}/{AnyArticle}")]
     public async Task An_anonymous_caller_is_unauthorized(string method, string path)
     {
         using var client = aspire.CreateHostClient();
