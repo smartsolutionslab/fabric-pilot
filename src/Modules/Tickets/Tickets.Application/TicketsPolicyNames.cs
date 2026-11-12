@@ -8,6 +8,9 @@ public static class TicketsPolicyNames
 {
     public const string Manage = "tickets.manage";
 
+    /// <summary>A customer raises their own tenant's tickets and reads them, with their files.</summary>
+    public const string RaiseAndRead = "tickets.raise-and-read";
+
     /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
     public const string ReadAllTenants = "tickets.read-all-tenants";
 

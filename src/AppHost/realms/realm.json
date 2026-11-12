@@ -14,6 +14,8 @@
   "roles": {
     "realm": [
       { "name": "manager", "description": "Sample role: each module's sample policy <module>.manage requires it." },
+      { "name": "customer-user", "description": "A customer's user: raises and reads their own tenant's tickets (tickets.raise-and-read)." },
+      { "name": "customer-admin", "description": "A customer's admin, who manages their own tenant's users; includes customer-user.", "composite": true, "composites": { "realm": ["customer-user"] } },
       { "name": "staff", "description": "Reads every tenant's rows on an endpoint mapped with AcrossTenants() and writes the records shared by all tenants on one mapped with WritesSharedRecords(); each module's policies <module>.read-all-tenants and <module>.write-shared-records require it." }
     ]
   },
@@ -107,7 +109,7 @@
       "firstName": "Local",
       "lastName": "Developer",
       "credentials": [{ "type": "password", "value": "developer", "temporary": false }],
-      "realmRoles": ["manager"],
+      "realmRoles": ["manager", "customer-admin"],
       "attributes": { "department": ["finance"] },
       "groups": ["/tenants/tenant-a"]
     },
@@ -119,7 +121,7 @@
       "firstName": "Local",
       "lastName": "Developer B",
       "credentials": [{ "type": "password", "value": "developer-b", "temporary": false }],
-      "realmRoles": ["manager"],
+      "realmRoles": ["manager", "customer-user"],
       "attributes": { "department": ["finance"] },
       "groups": ["/tenants/tenant-b"]
     },
