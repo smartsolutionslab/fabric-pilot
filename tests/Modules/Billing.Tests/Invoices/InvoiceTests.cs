@@ -53,7 +53,7 @@ public class InvoiceTests
         var result = Invoice.Issue(InvoiceId.New(), number, IssuedOn, DueOn, "EUR", [Line("Toner", 1, 12.50m)]);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBeOfType<InvalidInvoiceNumber>().Code.ShouldBe("billing.invalid-invoice-number");
+        result.Error.Value.ShouldBeOfType<InvalidInvoiceNumber>().Code.ShouldBe("billing.invalid-invoice-number");
     }
 
     [Theory]
@@ -65,7 +65,7 @@ public class InvoiceTests
     {
         var result = Invoice.Issue(InvoiceId.New(), "2026-0042", IssuedOn, DueOn, currency, [Line("Toner", 1, 12.50m)]);
 
-        result.Error.ShouldBeOfType<InvalidCurrency>().Code.ShouldBe("billing.invalid-currency");
+        result.Error.Value.ShouldBeOfType<InvalidCurrency>().Code.ShouldBe("billing.invalid-currency");
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class InvoiceTests
     {
         var result = Invoice.Issue(InvoiceId.New(), "2026-0042", IssuedOn, IssuedOn.AddDays(-1), "EUR", [Line("Toner", 1, 12.50m)]);
 
-        result.Error.ShouldBeOfType<DueBeforeIssued>().Code.ShouldBe("billing.due-before-issued");
+        result.Error.Value.ShouldBeOfType<DueBeforeIssued>().Code.ShouldBe("billing.due-before-issued");
     }
 
     [Theory]
@@ -85,7 +85,7 @@ public class InvoiceTests
 
         var result = Invoice.Issue(InvoiceId.New(), "2026-0042", IssuedOn, DueOn, "EUR", lines);
 
-        result.Error.ShouldBeOfType<InvalidLineCount>().Code.ShouldBe("billing.invalid-line-count");
+        result.Error.Value.ShouldBeOfType<InvalidLineCount>().Code.ShouldBe("billing.invalid-line-count");
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class InvoiceTests
         var result = InvoiceLine.Describe(description, quantity, decimal.Parse(unitPrice, System.Globalization.CultureInfo.InvariantCulture));
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBeOfType<InvalidInvoiceLine>().Code.ShouldBe("billing.invalid-invoice-line");
+        result.Error.Value.ShouldBeOfType<InvalidInvoiceLine>().Code.ShouldBe("billing.invalid-invoice-line");
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class InvoiceTests
     {
         var result = InvoiceLine.Describe(new string('x', InvoiceLine.MaximumDescriptionLength + 1), 1, 1m);
 
-        result.Error.ShouldBeOfType<InvalidInvoiceLine>();
+        result.Error.Value.ShouldBeOfType<InvalidInvoiceLine>();
     }
 
     [Fact]
