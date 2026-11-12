@@ -14,6 +14,8 @@ public sealed class AspireFixture : IAsyncLifetime
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(5);
 
+    private readonly FakeEmbeddingsServer embeddings = new();
+
     private DistributedApplication? app;
 
     public DistributedApplication App => app ?? throw new InvalidOperationException("The application has not started.");
@@ -32,8 +34,10 @@ public sealed class AspireFixture : IAsyncLifetime
             }
         }
 
-        // A resource that does not exist and a key-shaped value Azure does not accept: the integration tests never call the model.
-        builder.Configuration["Parameters:azure-openai-endpoint"] = "https://not-a-real-resource.openai.azure.com";
+        // The integration tests never call the model: the endpoint is a stand-in on this machine that answers embeddings
+        // with FakeEmbeddingGenerator's vectors, so publishing indexes, and refuses everything else, chat included; the key
+        // is a key-shaped value no provider accepts.
+        builder.Configuration["Parameters:azure-openai-endpoint"] = embeddings.Endpoint;
         builder.Configuration["Parameters:azure-openai-api-key"] = "not-a-real-key";
         // Embeddings use the chat model's azure-openai-endpoint and azure-openai-api-key, given their values above.
 
@@ -71,6 +75,8 @@ public sealed class AspireFixture : IAsyncLifetime
         {
             await app.DisposeAsync();
         }
+
+        await embeddings.DisposeAsync();
     }
 
     private sealed record TokenResponse([property: JsonPropertyName("access_token")] string AccessToken);
