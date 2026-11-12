@@ -11,8 +11,8 @@ public sealed class ListTicketsHandler(ITicketStore tickets) : IQueryHandler<Lis
 
         var (page, pageSize, sorting) = query;
         Ensure.That(sorting).IsNotNull();
-        Ensure.That((int)sorting.Field).Satisfies(field => Enum.IsDefined((TicketSortField)field), $"The ticket list cannot be sorted by {sorting.Field}.");
-        Ensure.That((int)sorting.Direction).Satisfies(direction => Enum.IsDefined((SortDirection)direction), $"{sorting.Direction} is not a sort direction.");
+        Ensure.That((int)sorting.Field, nameof(sorting)).Satisfies(field => Enum.IsDefined((TicketSortField)field), $"The ticket list cannot be sorted by {sorting.Field}.");
+        Ensure.That((int)sorting.Direction, nameof(sorting)).Satisfies(direction => Enum.IsDefined((SortDirection)direction), $"{sorting.Direction} is not a sort direction.");
 
         return Success(await tickets.ListAsync(sorting, page, pageSize, cancellationToken));
     }
