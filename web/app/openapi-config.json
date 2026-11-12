@@ -4,5 +4,6 @@
   "apiImport": "baseApi",
   "outputFile": "./src/api/generated.ts",
   "exportName": "api",
-  "hooks": { "queries": true, "lazyQueries": true, "mutations": true }
+  "hooks": { "queries": true, "lazyQueries": true, "mutations": true },
+  "tag": true
 }
