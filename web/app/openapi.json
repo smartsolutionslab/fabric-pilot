@@ -46,7 +46,7 @@
     "/tickets/tickets": {
       "post": {
         "tags": [
-          "TicketEndpoints"
+          "Tickets"
         ],
         "requestBody": {
           "content": {
@@ -114,7 +114,7 @@
       },
       "get": {
         "tags": [
-          "Host"
+          "Tickets"
         ],
         "parameters": [
           {
@@ -155,7 +155,7 @@
     "/tickets/tickets/{ticketId}": {
       "get": {
         "tags": [
-          "Host"
+          "Tickets"
         ],
         "parameters": [
           {
@@ -185,7 +185,7 @@
     "/tickets/tickets/{ticketId}/attachments/{attachmentId}": {
       "get": {
         "tags": [
-          "Host"
+          "Tickets"
         ],
         "parameters": [
           {
@@ -413,7 +413,7 @@
       "name": "Host"
     },
     {
-      "name": "TicketEndpoints"
+      "name": "Tickets"
     }
   ]
 }

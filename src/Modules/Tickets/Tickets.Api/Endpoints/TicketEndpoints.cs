@@ -23,17 +23,21 @@ public sealed class TicketEndpoints : IEndpoint
     {
         Ensure.That(endpoints).IsNotNull();
 
+        // One OpenAPI tag for the module's endpoints: the generated client refetches what a tag provides when a request
+        // with the same tag changes it, so a raised ticket shows up in the list.
+        var tickets = endpoints.MapGroup("/tickets").WithTags("Tickets");
+
         // Callers authenticate with a bearer token, never a cookie, so a forged cross-site form carries no credentials:
         // the antiforgery check form endpoints get by default guards against nothing here.
-        endpoints.MapPost("/tickets", RaiseAsync)
+        tickets.MapPost(string.Empty, RaiseAsync)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(LargestRequest))
             .WithFormOptions(multipartBodyLengthLimit: LargestRequest);
-        endpoints.MapGet("/tickets", async (Page? page, PageSize? pageSize, IDispatcher dispatcher, CancellationToken cancellationToken) =>
+        tickets.MapGet(string.Empty, async (Page? page, PageSize? pageSize, IDispatcher dispatcher, CancellationToken cancellationToken) =>
             (await dispatcher.QueryAsync(new ListTickets(page ?? Page.First, pageSize ?? PageSize.Default), cancellationToken)).ToHttpResult());
-        endpoints.MapGet("/tickets/{ticketId:guid}", async (Guid ticketId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
+        tickets.MapGet("/{ticketId:guid}", async (Guid ticketId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
             (await dispatcher.QueryAsync(new GetTicket(ticketId), cancellationToken)).ToHttpResult());
-        endpoints.MapGet("/tickets/{ticketId:guid}/attachments/{attachmentId:guid}", async (Guid ticketId, Guid attachmentId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
+        tickets.MapGet("/{ticketId:guid}/attachments/{attachmentId:guid}", async (Guid ticketId, Guid attachmentId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
             (await dispatcher.QueryAsync(new DownloadAttachment(ticketId, attachmentId), cancellationToken))
                 // Always a download, never shown inline: an uploaded page must not run in the portal's origin.
                 .ToHttpResult(download => TypedResults.Stream(download.Content, "application/octet-stream", download.FileName)))
