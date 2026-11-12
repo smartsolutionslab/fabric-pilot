@@ -1,0 +1,33 @@
+using FabricPilot.BuildingBlocks.Modules;
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+public static class ModulePolicyRegistration
+{
+    /// <summary>
+    /// Registers the policies of every <see cref="IModulePolicies"/> in the Api assembly of <typeparamref name="TModule"/>,
+    /// and refuses a name another module registered before, naming both modules.
+    /// </summary>
+    public static IServiceCollection AddModulePolicies<TModule>(this IServiceCollection services)
+        where TModule : IModule
+    {
+        Ensure.That(services).IsNotNull();
+
+        // One owner record per service collection, shared by every module the host adds. The core services only: the
+        // host adds the rest (policy evaluation needs its endpoints), and a module's own tests build its services
+        // without a host.
+        if (services.FirstOrDefault(service => service.ServiceType == typeof(ModulePolicyOwners))?.ImplementationInstance is not ModulePolicyOwners owners)
+        {
+            owners = new ModulePolicyOwners();
+            services.AddSingleton(owners);
+        }
+
+        var conflicts = owners.Register(typeof(TModule).Assembly, services);
+        if (conflicts.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, conflicts));
+        }
+
+        return services;
+    }
+}

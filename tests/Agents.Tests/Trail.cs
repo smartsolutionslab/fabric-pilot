@@ -1,0 +1,6 @@
+using FabricPilot.BuildingBlocks.Messaging;
+
+namespace FabricPilot.Agents.Tests;
+
+/// <summary>A request that contains itself, optionally: its schema must end, as a value of it does.</summary>
+public sealed record Trail(string Step, Option<Trail> Next) : IQuery<Result<int, ApiError>>;

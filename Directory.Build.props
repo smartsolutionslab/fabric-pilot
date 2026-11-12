@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,8 +11,21 @@
 
   </PropertyGroup>
 
+  <!-- One type per file, named after the type: SA1402 and SA1649, configured in stylecop.json and .editorconfig. -->
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+
+  <!-- The time comes from TimeProvider, never DateTime.Now and friends (RS0030); the AppHost composes processes and is exempt. -->
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'AppHost'">
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/time/BannedSymbols.txt" />
+  </ItemGroup>
+
+  <!-- Every Guid is a time-ordered Guid v7, never Guid.NewGuid (RS0030), tests included; the AppHost creates none and is exempt. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'AppHost'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/ids/BannedSymbols.txt" />
   </ItemGroup>
 
   <!-- src/Kernel is available everywhere but the AppHost, which composes processes and needs none of it. -->
@@ -25,6 +38,6 @@
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/guards/BannedSymbols.txt" />
   </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectName)' != 'Kernel' And '$(MSBuildProjectName)' != 'AppHost'">
-    <Using Include="FabricPilot.Kernel.Result" Static="true" />
+    <Using Include="FabricPilot.Kernel.Outcome" Static="true" />
   </ItemGroup>
 </Project>

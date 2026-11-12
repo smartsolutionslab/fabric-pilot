@@ -8,10 +8,13 @@ const host = process.env.services__host__http__0;
 
 export default defineConfig({
   plugins: [
+    // React's first, then the chosen packs' in order.
     react(),
-    tailwindcss()
+    tailwindcss(),
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  server: host ? { proxy: { '/api': { target: host, changeOrigin: true, rewrite: (path) => path.replace(/^\/api/, '') } } } : {},
+  server: host
+    ? { proxy: { '/api': { target: host, changeOrigin: true, rewrite: (path) => path.replace(/^\/api/, '') } } }
+    : {},
   test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'], setupFiles: ['./src/test-setup.ts'] },
 });

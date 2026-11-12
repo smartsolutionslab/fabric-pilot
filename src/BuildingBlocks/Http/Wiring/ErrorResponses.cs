@@ -1,0 +1,72 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+public static partial class ErrorResponses
+{
+    /// <summary>
+    /// Problem details for every error the host answers: a failed guard (<see cref="GuardException"/>) is a 400
+    /// with the code <see cref="GuardExceptionHandler.Code"/>; a request the endpoint cannot read or bind
+    /// (<see cref="BadHttpRequestException"/>) answers its own status, a 400; any other exception, an
+    /// <see cref="ArgumentException"/> included, is a 500 that says nothing about itself.
+    /// </summary>
+    public static IServiceCollection AddErrorResponses(this IServiceCollection services) =>
+        services.AddProblemDetails()
+            .Configure<ExceptionHandlerOptions>(options => options.StatusCodeSelector = StatusOf)
+            .AddExceptionHandler<GuardExceptionHandler>();
+
+    /// <summary>
+    /// Minimal APIs throw <see cref="BadHttpRequestException"/> for a request they cannot bind in Development only;
+    /// elsewhere they answer 400 themselves. Either way it is the caller's fault, not a bug.
+    /// </summary>
+    private static int StatusOf(Exception exception) =>
+        exception is BadHttpRequestException badRequest ? badRequest.StatusCode : StatusCodes.Status500InternalServerError;
+
+    /// <summary>
+    /// The backstop for preconditions. A <see cref="GuardException"/> that escapes an endpoint was thrown by
+    /// <c>Ensure.That</c> in a guard or a value object's factory on the caller's input, so it answers 400 problem details.
+    /// Expected failures are Results, not exceptions. Every other exception, a plain <see cref="ArgumentException"/>
+    /// included, is a bug: it is left to the exception handler middleware, which answers 500 without details.
+    /// </summary>
+    private sealed partial class GuardExceptionHandler(IProblemDetailsService problemDetails, ILogger<GuardExceptionHandler> logger) : IExceptionHandler
+    {
+        /// <summary>The <c>code</c> of every problem a failed guard answers.</summary>
+        public const string Code = "invalid-argument";
+
+        public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
+        {
+            Ensure.That(httpContext).IsNotNull();
+
+            if (exception is not GuardException guard)
+            {
+                return false;
+            }
+
+            LogRejected(logger, guard.ParamName, guard.Message);
+
+            httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+
+            // A caller that accepts no JSON still gets the status, without a body.
+            await problemDetails.TryWriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = httpContext,
+                ProblemDetails =
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "The request is invalid.",
+                    Detail = guard.Message,
+                    Extensions = { ["code"] = Code },
+                },
+            });
+
+            return true;
+        }
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "A guard rejected the request's {Parameter}: {Reason}")]
+        private static partial void LogRejected(ILogger logger, string? parameter, string reason);
+    }
+}

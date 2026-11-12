@@ -1,0 +1,89 @@
+using System.Reflection;
+using FabricPilot.BuildingBlocks.Persistence;
+using FabricPilot.BuildingBlocks.Rag;
+using Npgsql;
+
+namespace FabricPilot.Rag.Tests;
+
+/// <summary>The vector tables the MigrationRunner made: one per module schema, of the embeddings model's size, with an HNSW cosine index and a tenant column its key includes.</summary>
+public sealed class VectorTablesTests(ApplicationDatabase database)
+{
+    [Fact]
+    public async Task Every_modules_schema_has_an_embeddings_table_of_the_models_size_with_an_hnsw_cosine_index()
+    {
+        var schemas = Directory.EnumerateFiles(AppContext.BaseDirectory, "FabricPilot.Modules.*.Infrastructure.dll")
+            .Order(StringComparer.Ordinal)
+            .Select(Assembly.LoadFrom)
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(ModuleDbContext).IsAssignableFrom(type))
+            .Select(VectorTables.SchemaOf)
+            .ToList();
+
+        List<string> missing = [];
+        foreach (var schema in schemas)
+        {
+            missing.AddRange(await ProblemsAsync(schema));
+        }
+
+        missing.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Creating_the_tables_again_keeps_the_table_and_its_records()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        const string Schema = "rag_tests_again";
+        await VectorTables.CreateAsync(database.ConnectionString, [Schema], cancellationToken);
+        await ExecuteAsync($"INSERT INTO {VectorTables.Table(Schema)} (tenant_id, key, content, embedding) VALUES ('tenant-a', 'kept', 'kept', array_fill(1, ARRAY[{VectorTables.Dimensions}])::vector)");
+
+        await VectorTables.CreateAsync(database.ConnectionString, [Schema], cancellationToken);
+
+        (await ProblemsAsync(Schema)).ShouldBeEmpty();
+        (await ScalarAsync($"SELECT count(*)::text FROM {VectorTables.Table(Schema)}")).ShouldBe("1");
+    }
+
+    private async Task<List<string>> ProblemsAsync(string schema)
+    {
+        List<string> problems = [];
+        var column = await ScalarAsync($"SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = to_regclass('{VectorTables.Table(schema).Replace("'", "''", StringComparison.Ordinal)}') AND attname = 'embedding'");
+        if (column != $"vector({VectorTables.Dimensions})")
+        {
+            problems.Add($"{schema}.embeddings has no embedding column of vector({VectorTables.Dimensions}) but '{column}'.");
+        }
+
+        var index = await ScalarAsync($"SELECT string_agg(indexdef, '; ') FROM pg_indexes WHERE schemaname = '{schema.Replace("'", "''", StringComparison.Ordinal)}' AND tablename = 'embeddings'");
+        if (index?.Contains("USING hnsw (embedding vector_cosine_ops)", StringComparison.Ordinal) != true)
+        {
+            problems.Add($"{schema}.embeddings has no HNSW cosine index: '{index}'.");
+        }
+
+        var tenant = await ScalarAsync($"SELECT format_type(atttypid, atttypmod) || CASE WHEN attnotnull THEN ' not null' ELSE '' END FROM pg_attribute WHERE attrelid = to_regclass('{VectorTables.Table(schema).Replace("'", "''", StringComparison.Ordinal)}') AND attname = 'tenant_id'");
+        if (tenant != "text not null")
+        {
+            problems.Add($"{schema}.embeddings has no tenant_id column of text not null but '{tenant}'.");
+        }
+
+        if (index?.Contains("USING btree (tenant_id, key)", StringComparison.Ordinal) != true)
+        {
+            problems.Add($"{schema}.embeddings has no index on (tenant_id, key): '{index}'.");
+        }
+
+        return problems;
+    }
+
+    private async Task<string?> ScalarAsync(string sql)
+    {
+        await using var connection = new NpgsqlConnection(database.ConnectionString);
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await using var command = new NpgsqlCommand(sql, connection);
+        return await command.ExecuteScalarAsync(TestContext.Current.CancellationToken) as string;
+    }
+
+    private async Task ExecuteAsync(string sql)
+    {
+        await using var connection = new NpgsqlConnection(database.ConnectionString);
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+    }
+}

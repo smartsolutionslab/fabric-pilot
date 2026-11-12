@@ -1,0 +1,21 @@
+using FabricPilot.BuildingBlocks.DomainEvents;
+using FabricPilot.BuildingBlocks.Modules;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Microsoft.Extensions.DependencyInjection;
+
+public static class DomainEventRegistration
+{
+    /// <summary>Registers every domain-event reaction the dispatcher delivers to in the module's Application assembly.</summary>
+    public static IServiceCollection AddModuleDomainEventReactions<TModule>(this IServiceCollection services)
+        where TModule : IModule
+    {
+        foreach (var registration in DomainEventReactions.In(ModuleAssemblies.Of<TModule>("Application")))
+        {
+            services.TryAddScoped(registration.Reaction);
+            services.AddSingleton(registration);
+        }
+
+        return services;
+    }
+}

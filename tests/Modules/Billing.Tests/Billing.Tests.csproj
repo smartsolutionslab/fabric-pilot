@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../src/Modules/Billing/Billing.Api/Billing.Api.csproj" />
+    <Compile Include="../../Fakes/*.cs" Link="Fakes/%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

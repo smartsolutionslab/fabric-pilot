@@ -1,0 +1,77 @@
+using Npgsql;
+
+namespace FabricPilot.BuildingBlocks.Rag;
+
+/// <summary>
+/// The vector tables: one <c>embeddings</c> table in each module's schema, with an HNSW index for cosine distance.
+/// Each record belongs to a tenant: <c>tenant_id</c> leads the primary key, so a key is unique within a tenant and
+/// the key's index also finds one tenant's records.
+/// The MigrationRunner creates them after the modules' migrations; the host never creates or alters them.
+/// </summary>
+public static class VectorTables
+{
+    /// <summary>The size of every stored vector: the embeddings model's, text-embedding-3-small. A model of another size needs tables of that size, made by a migration step of the project's own, and every record embedded again.</summary>
+    public const int Dimensions = 1536;
+
+    /// <summary>The key of the data source the indexes use, which knows the <c>vector</c> type.</summary>
+    public const string DataSourceKey = "vectors";
+
+    /// <summary>A data source for the connection string that reads and writes <c>vector</c> values.</summary>
+    public static NpgsqlDataSource DataSource(string connectionString)
+    {
+        var builder = new NpgsqlDataSourceBuilder(connectionString);
+        builder.UseVector();
+        return builder.Build();
+    }
+
+    /// <summary>The schema of a module's DbContext type, from its <c>Schema</c> constant.</summary>
+    public static string SchemaOf(Type context)
+    {
+        Ensure.That(context).IsNotNull();
+
+        return context.GetField("Schema")?.GetValue(null) as string
+            ?? throw new InvalidOperationException($"{context.Name} declares no Schema constant.");
+    }
+
+    /// <summary>The quoted name of the schema's vector table.</summary>
+    public static string Table(string schema)
+    {
+        Ensure.That(schema).IsNotNullOrWhiteSpace();
+
+        return $"{Quote(schema)}.embeddings";
+    }
+
+    /// <summary>
+    /// Creates the <c>vector</c> extension, then each schema's <c>embeddings</c> table and its index; what exists
+    /// already is left as it is, so running it again changes nothing. One transaction, holding an advisory lock, so two
+    /// runs at once do not both try to create the same thing (PostgreSQL's IF NOT EXISTS does not wait for the other).
+    /// </summary>
+    public static async Task CreateAsync(string connectionString, IEnumerable<string> schemas, CancellationToken cancellationToken = default)
+    {
+        Ensure.That(connectionString).IsNotNullOrWhiteSpace();
+        Ensure.That(schemas).IsNotNull();
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await ExecuteAsync(connection, "SELECT pg_advisory_xact_lock(hashtext('vector tables'))", cancellationToken);
+        await ExecuteAsync(connection, "CREATE EXTENSION IF NOT EXISTS vector", cancellationToken);
+        foreach (var schema in schemas)
+        {
+            var table = Table(schema);
+            await ExecuteAsync(connection, $"CREATE SCHEMA IF NOT EXISTS {Quote(schema)}", cancellationToken);
+            await ExecuteAsync(connection, $"CREATE TABLE IF NOT EXISTS {table} (tenant_id text not null, key text not null, content text not null, embedding vector({Dimensions}) not null, primary key (tenant_id, key))", cancellationToken);
+            await ExecuteAsync(connection, $"CREATE INDEX IF NOT EXISTS embeddings_embedding_hnsw ON {table} USING hnsw (embedding vector_cosine_ops)", cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+
+    private static async Task ExecuteAsync(NpgsqlConnection connection, string sql, CancellationToken cancellationToken)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+}

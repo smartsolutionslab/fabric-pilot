@@ -1,0 +1,13 @@
+using FabricPilot.BuildingBlocks.Domain;
+
+namespace FabricPilot.BuildingBlocks.DomainEvents;
+
+/// <summary>
+/// Reacts to one domain event of its module once the changes that raised it are committed. A class in the module's
+/// Application project; <see cref="DomainEventReactions.Problem"/> says what else makes it one the dispatcher delivers to.
+/// </summary>
+public interface IDomainEventReaction<TEvent>
+    where TEvent : IDomainEvent
+{
+    Task ReactAsync(TEvent domainEvent, CancellationToken cancellationToken);
+}

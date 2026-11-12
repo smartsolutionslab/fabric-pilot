@@ -1,0 +1,4 @@
+namespace FabricPilot.Kernel;
+
+/// <summary>An <see cref="Option{T}"/>'s case that holds nothing, matched in a <c>switch</c> on an option: <c>None =&gt; ...</c>.</summary>
+public readonly struct None;

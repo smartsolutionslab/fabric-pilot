@@ -1,7 +1,9 @@
 # Written by fabric. These choices are fixed for this project (ADR-0001 of the generator).
 fabric: 1
+generator: 0.1.0
+catalog: sha256:17c114c1c654da56e24f97109fc76e902288af9ccffb1ca6b74df2c8bfeb7c0b
 name: fabric-pilot
-profile: saas-standard-react
+profile: saas-ai-react
 project:
   backend.database: postgres
   backend.data-access: ef-core
@@ -16,7 +18,13 @@ project:
   backend.guards: ensure-that
   backend.absence: option
   backend.auth: keycloak
+  backend.authorization: [roles, claims]
   backend.tenancy: column
+  backend.llm: azure-openai
+  backend.llm.agents: agent-framework
+  backend.llm.extras: [rag, evals]
+  backend.llm.embeddings: azure-openai
+  backend.mcp: []
   backend.test.framework: xunit
   backend.test.assertions: shouldly
   backend.test.mocks: nsubstitute
@@ -36,17 +44,47 @@ project:
   frontend.design-system: none
   frontend.data-grid: tanstack-table
   frontend.charts: echarts
+  frontend.dashboards: []
   frontend.realtime: none
+  frontend.agent-ui: none
   frontend.auth-client: oidc-client-ts
   frontend.pwa: "no"
   frontend.test.extras: [accessibility]
+  backend.data-access.reads: ef-core
+settings:
+  backend.llm.extras.evals.threshold: 4
 module-defaults:
   module.style: ddd
   module.ddd-depth: light
   module.cqrs: logical
   module.communication: [integration-events]
 modules:
+  tickets:
+    module.style: ddd
+    module.ddd-depth: light
+    module.cqrs: logical
+    module.communication: [integration-events]
+  contracts:
+    module.style: ddd
+    module.ddd-depth: light
+    module.cqrs: logical
+    module.communication: [integration-events]
   billing:
+    module.style: ddd
+    module.ddd-depth: light
+    module.cqrs: logical
+    module.communication: [integration-events]
+  documents:
+    module.style: ddd
+    module.ddd-depth: light
+    module.cqrs: logical
+    module.communication: [integration-events]
+  knowledge:
+    module.style: ddd
+    module.ddd-depth: light
+    module.cqrs: logical
+    module.communication: [integration-events]
+  notifications:
     module.style: ddd
     module.ddd-depth: light
     module.cqrs: logical

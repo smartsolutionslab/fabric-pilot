@@ -7,8 +7,9 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     ignores: [
+      // Build output, then the files a generator writes.
       'dist',
-      'src/api/generated.ts'
+      'src/api/generated.ts',
     ],
   },
   {
@@ -19,17 +20,64 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['react-router-dom'], message: 'Use react-router (docs/adr).' },
-          { group: ['zustand', 'mobx', 'mobx-react*', 'jotai', 'recoil'], message: 'Use the Redux store (docs/adr).' },
-          { group: ['@mui/*', 'antd', '@mantine/*', '@chakra-ui/*'], message: 'Use the shadcn/ui components in src/components/ui (docs/adr).' },
-          { group: ['formik', 'react-final-form', 'final-form'], message: 'Use react-hook-form (docs/adr).' },
-          { group: ['yup', 'joi', 'valibot'], message: 'Use zod (docs/adr).' },
-          { group: ['ag-grid-*'], message: 'Use DataTable from src/components/ui (docs/adr).' },
-          { group: ['recharts', 'chart.js', 'react-chartjs-2'], message: 'Use Chart from src/components/chart (docs/adr).' }
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            // Each chosen library bans its alternatives.
+            { group: ['react-router-dom'], message: 'Use react-router (docs/adr).' },
+            {
+              group: ['zustand', 'mobx', 'mobx-react*', 'jotai', 'recoil'],
+              message: 'Use the Redux store (docs/adr).',
+            },
+            {
+              group: ['@mui/*', 'antd', '@mantine/*', '@chakra-ui/*'],
+              message: 'Use the shadcn/ui components in src/components/ui (docs/adr).',
+            },
+            { group: ['formik', 'react-final-form', 'final-form'], message: 'Use react-hook-form (docs/adr).' },
+            { group: ['yup', 'joi', 'valibot'], message: 'Use zod (docs/adr).' },
+            {
+              group: ['@ag-ui/*', '@copilotkit/*'],
+              message: 'This project has no agent panel (frontend.agent-ui: none); adding one is a project decision.',
+            },
+            { group: ['ag-grid-*'], message: 'Use DataTable from src/components/ui (docs/adr).' },
+            {
+              group: ['recharts', 'chart.js', 'react-chartjs-2'],
+              message: 'Use Chart from src/components/chart (docs/adr).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // A test waits for a condition, not a count: a fixed number of yields passes on a fast machine and fails on a
+    // loaded CI runner. Necessary, not sufficient; docs/adr says what these selectors cannot see.
+    files: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ForStatement[test] AwaitExpression > NewExpression[callee.name='Promise'], " +
+            "ForOfStatement AwaitExpression > NewExpression[callee.name='Promise'], " +
+            "ForInStatement AwaitExpression > NewExpression[callee.name='Promise']",
+          message:
+            'A fixed count of timer yields is not a bound on work that advances in another phase of the event loop. ' +
+            'Wait for the condition: findBy* or waitFor. To drive fake timers, use vi.advanceTimersByTimeAsync.',
+        },
+        {
+          selector:
+            ':matches(' +
+            "ExpressionStatement[expression.type='AwaitExpression'][expression.argument.callee.name='Promise'], " +
+            "ExpressionStatement[expression.type='AwaitExpression'][expression.argument.callee.name=/^(settle|sleep|delay|wait|pause|tick|nextTick|flushPromises|setTimeout)$/], " +
+            "ExpressionStatement[expression.type='AwaitExpression'][expression.argument.callee.name='act'][expression.argument.arguments.0.body.body.length=0]" +
+            ") + ExpressionStatement:has(CallExpression[callee.name='expect'])",
+          message:
+            'A settle may not immediately precede an assertion: it assumes the work finished in time. ' +
+            'Wait for the condition: findBy* or waitFor.',
+        },
+      ],
     },
   },
 );

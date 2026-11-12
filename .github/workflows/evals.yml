@@ -1,0 +1,43 @@
+name: evals
+
+# The evals score the project's LLM use cases with its own model (docs/adr, tests/Evals). They are off by default: a
+# run costs money and sends the examples and the answers to the provider. Run them by hand from the Actions tab, or set
+# the repository variable EVALS_SCHEDULED to true for the weekly run. The regular CI never runs them.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+# One run per workflow and ref. Nothing here runs on a pull request, so a run is never cancelled while it runs: an eval
+# stopped halfway has already spent its calls and reports nothing; a newer run waits for it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  evals:
+    if: github.event_name != 'schedule' || vars.EVALS_SCHEDULED == 'true'
+    runs-on: ubuntu-latest
+    # The key is the repository secret named after the provider, passed to the AppHost's parameter.
+    env:
+      Parameters__azure-openai-api-key: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      Parameters__azure-openai-endpoint: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - run: dotnet build tests/Evals/Evals.csproj -c Release
+      - name: Evaluate
+        run: dotnet test --project tests/Evals/Evals.csproj -c Release --no-build
+      # The report shows every score, passing or not.
+      - name: Report
+        if: ${{ !cancelled() && hashFiles('TestResults/evals/**') != '' }}
+        run: |
+          dotnet tool restore
+          dotnet aieval report --path TestResults/evals --output TestResults/evals/report.html
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() && hashFiles('TestResults/evals/**') != '' }}
+        with:
+          name: evals
+          path: TestResults/evals

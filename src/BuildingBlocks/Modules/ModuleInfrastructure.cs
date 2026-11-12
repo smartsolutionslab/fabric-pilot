@@ -14,6 +14,8 @@ public static class ModuleInfrastructure
         services.AddModuleDbContext<TModule>(configuration);
         services.AddModuleHandlers<TModule>();
         services.AddModuleUnitOfWork<TModule>();
+        services.AddModuleDomainEventReactions<TModule>();
+        services.AddModulePolicies<TModule>();
         return services;
     }
 }

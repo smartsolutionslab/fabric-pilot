@@ -9,20 +9,27 @@ foreach (var module in modules)
     module.AddServices(builder.Services, builder.Configuration);
 }
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.DescribeAsOpenApi31().DescribePaging());
 builder.Services.AddKeycloakAuthentication(builder.Configuration, builder.Environment);
-builder.Services.AddProblemDetails();
+builder.Services.AddKeycloakRoles();
+builder.Services.AddUniqueConstraintResponses();
+builder.Services.AddErrorResponses();
+builder.Services.AddAzureOpenAIChatClient(builder.Configuration);
+builder.Services.AddAzureOpenAIEmbeddingGenerator(builder.Configuration);
+builder.Services.AddModuleVectorIndexes(builder.Configuration);
 builder.Services.AddDispatcher();
 builder.Services.AddTenancy();
 builder.Services.AddMessaging(builder.Configuration, modules);
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    // The frontend's client is generated from the document without signing in.
+    app.MapOpenApi().AllowAnonymous();
 }
 
 app.MapDefaultEndpoints();

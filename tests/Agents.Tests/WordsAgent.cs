@@ -1,0 +1,25 @@
+using FabricPilot.BuildingBlocks.Agents;
+using FabricPilot.BuildingBlocks.Messaging;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+
+namespace FabricPilot.Agents.Tests;
+
+/// <summary>
+/// A sample agent, as a module's Application project would define one: instructions for the model, and the module's
+/// own use cases as its tools, each sent through the dispatcher.
+/// </summary>
+public static class WordsAgent
+{
+    public static AIAgent Create(IChatClient model, IDispatcher dispatcher) =>
+        model.AsAIAgent(
+            instructions: "You answer questions about the words of a text. Use the tools for every count; never guess one.",
+            name: "words",
+            description: "Answers questions about the words of a text.",
+            tools:
+            [
+                DispatcherTool.For<CountWords>(dispatcher, "Counts the words of a text."),
+                DispatcherTool.For<ListWords>(dispatcher, "Lists the words of a text, a page at a time."),
+                DispatcherTool.For<LongestWord>(dispatcher, "Finds the longest word of a text with at least the given number of letters, if one is given; null when there is none."),
+            ]);
+}

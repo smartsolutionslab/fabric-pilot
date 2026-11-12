@@ -1,0 +1,4 @@
+# Prettier also skips what .gitignore lists (test-results, playwright-report).
+dist
+src/api/generated.ts
+openapi.json

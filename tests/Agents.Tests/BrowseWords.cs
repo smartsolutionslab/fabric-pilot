@@ -1,0 +1,6 @@
+using FabricPilot.BuildingBlocks.Messaging;
+
+namespace FabricPilot.Agents.Tests;
+
+/// <summary>A paged query whose page may be absent: the first page, then.</summary>
+public sealed record BrowseWords(string Text, Page? Page, PageSize PageSize) : IQuery<Result<PagedResult<string>, ApiError>>;

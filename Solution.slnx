@@ -8,8 +8,18 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
+    <Project Path="tests/Kernel/Paging.Tests/Paging.Tests.csproj" />
   </Folder>
+  <Project Path="tests/Kernel/Absence.Tests/Absence.Tests.csproj" />
   <Project Path="src/MigrationRunner/MigrationRunner.csproj" />
+  <Project Path="tests/Kernel/Guards.Tests/Guards.Tests.csproj" />
+  <Project Path="tests/Agents.Tests/Agents.Tests.csproj" />
+
+  <Project Path="tests/Evals/Evals.csproj" />
+  <Project Path="tests/Evals.Tests/Evals.Tests.csproj" />
+
+  <Project Path="tests/Rag.Tests/Rag.Tests.csproj" />
+  <Project Path="tests/Kernel/Results.Tests/Results.Tests.csproj" />
   <Project Path="tests/Integration.Tests/Integration.Tests.csproj" />
   <Project Path="src/Host/Host.csproj" />
   <Project Path="src/BuildingBlocks.Domain/BuildingBlocks.Domain.csproj" />

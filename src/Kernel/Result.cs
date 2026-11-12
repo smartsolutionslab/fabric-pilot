@@ -1,7 +1,14 @@
+using System.Runtime.CompilerServices;
+
 namespace FabricPilot.Kernel;
 
-/// <summary>Either a value or an expected failure. Business failures carry a typed error; bugs and broken infrastructure throw.</summary>
-public readonly struct Result<TValue, TError>
+/// <summary>
+/// Either a value or an expected failure: a union of <see cref="SuccessOutcome{TValue}"/> and
+/// <see cref="FailureOutcome{TError}"/>, so a <c>switch</c> on a result that misses either case does not compile.
+/// Business failures carry a typed error; bugs and broken infrastructure throw.
+/// </summary>
+[Union]
+public readonly struct Result<TValue, TError> : Result<TValue, TError>.IUnionMembers
     where TValue : notnull
     where TError : notnull
 {
@@ -16,6 +23,26 @@ public readonly struct Result<TValue, TError>
         this.isSuccess = isSuccess;
     }
 
+    /// <summary>
+    /// What makes the result a union, kept apart so that <see cref="Value"/> stays the success's value: the compiler
+    /// turns a case into a result with <c>Create</c>, which lets a handler write <c>Success(dto)</c> and the return type
+    /// supply the error type, and matches a case with <c>TryGetValue</c>, without boxing it.
+    /// </summary>
+    public interface IUnionMembers
+    {
+        object? Value { get; }
+
+        bool HasValue { get; }
+
+        static abstract Result<TValue, TError> Create(SuccessOutcome<TValue> outcome);
+
+        static abstract Result<TValue, TError> Create(FailureOutcome<TError> outcome);
+
+        bool TryGetValue(out SuccessOutcome<TValue> outcome);
+
+        bool TryGetValue(out FailureOutcome<TError> outcome);
+    }
+
     public bool IsSuccess => isSuccess;
 
     public bool IsFailure => !isSuccess;
@@ -26,18 +53,19 @@ public readonly struct Result<TValue, TError>
     public TError Error =>
         isSuccess ? throw new InvalidOperationException("Result is a success; no error.") : error;
 
+    object? IUnionMembers.Value => isSuccess ? new SuccessOutcome<TValue>(value) : new FailureOutcome<TError>(error);
+
+    bool IUnionMembers.HasValue => true;
+
+    static Result<TValue, TError> IUnionMembers.Create(SuccessOutcome<TValue> outcome) => Success(outcome.Value);
+
+    static Result<TValue, TError> IUnionMembers.Create(FailureOutcome<TError> outcome) => Failure(outcome.Error);
+
 #pragma warning disable CA1000 // Static factories on the generic type: Result<InvoiceDto, ApiError>.Success(dto) where no return type infers it.
     public static Result<TValue, TError> Success(TValue value) => new(value, default!, isSuccess: true);
 
     public static Result<TValue, TError> Failure(TError error) => new(default!, error, isSuccess: false);
 #pragma warning restore CA1000
-
-#pragma warning disable CA2225 // The named alternatives are Success and Failure above.
-    /// <summary>Lets a handler write <c>Success(dto)</c>; the return type supplies the error type.</summary>
-    public static implicit operator Result<TValue, TError>(SuccessOutcome<TValue> outcome) => Success(outcome.Value);
-
-    public static implicit operator Result<TValue, TError>(FailureOutcome<TError> outcome) => Failure(outcome.Error);
-#pragma warning restore CA2225
 
     public TOut Match<TOut>(Func<TValue, TOut> onSuccess, Func<TError, TOut> onFailure)
     {
@@ -46,35 +74,25 @@ public readonly struct Result<TValue, TError>
 
         return isSuccess ? onSuccess(value) : onFailure(error);
     }
-}
 
-/// <summary>Half-built success, waiting for a return type to say which <see cref="Result{TValue,TError}"/> it is.</summary>
-public readonly struct SuccessOutcome<TValue>
-    where TValue : notnull
-{
-    internal SuccessOutcome(TValue value) => Value = value;
+    /// <summary>The same outcome with the error translated, e.g. a domain error to an <c>ApiError</c> in Application.</summary>
+    public Result<TValue, TOut> MapError<TOut>(Func<TError, TOut> map)
+        where TOut : notnull
+    {
+        Ensure.That(map).IsNotNull();
 
-    internal TValue Value { get; }
-}
+        return isSuccess ? Result<TValue, TOut>.Success(value) : Result<TValue, TOut>.Failure(map(error));
+    }
 
-/// <summary>
-/// Half-built failure. The type argument is the error base the result declares, not the concrete error: generics are
-/// invariant, so each module's <c>&lt;Name&gt;Failures</c> factories return the base.
-/// </summary>
-public readonly struct FailureOutcome<TError>
-    where TError : notnull
-{
-    internal FailureOutcome(TError error) => Error = error;
+    bool IUnionMembers.TryGetValue(out SuccessOutcome<TValue> outcome)
+    {
+        outcome = isSuccess ? new SuccessOutcome<TValue>(value) : default;
+        return isSuccess;
+    }
 
-    internal TError Error { get; }
-}
-
-/// <summary>Imported with <c>using static</c> everywhere: <c>Success(dto)</c>, <c>Failure(InvoiceFailures.NotFound(id))</c>.</summary>
-public static class Result
-{
-    public static SuccessOutcome<TValue> Success<TValue>(TValue value)
-        where TValue : notnull => new(value);
-
-    public static FailureOutcome<TError> Failure<TError>(TError error)
-        where TError : notnull => new(error);
+    bool IUnionMembers.TryGetValue(out FailureOutcome<TError> outcome)
+    {
+        outcome = isSuccess ? default : new FailureOutcome<TError>(error);
+        return !isSuccess;
+    }
 }

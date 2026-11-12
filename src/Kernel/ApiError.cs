@@ -6,4 +6,12 @@ namespace FabricPilot.Kernel;
 /// The base of every expected failure: a stable machine-readable code, a message for people, and the HTTP status it
 /// maps to, so endpoints emit problem details without per-case mapping.
 /// </summary>
-public abstract record ApiError(string Code, string Message, HttpStatusCode Status);
+public abstract record ApiError(string Code, string Message, HttpStatusCode Status)
+{
+    /// <summary>A domain rule's failure with the status Application gives it; the domain itself knows no HTTP.</summary>
+    public static ApiError From(DomainError error, HttpStatusCode status)
+    {
+        Ensure.That(error).IsNotNull();
+        return new DomainFailure(error, status);
+    }
+}
