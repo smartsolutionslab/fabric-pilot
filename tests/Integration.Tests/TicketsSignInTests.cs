@@ -94,6 +94,55 @@ public class TicketsSignInTests(AspireFixture aspire)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task Staff_read_one_ticket_of_any_tenant_with_its_description()
+    {
+        using var tenantB = await aspire.CreateHostClientAsync("developer-b");
+        var id = await RaiseAsync(tenantB, $"Read by staff {Guid.CreateVersion7()}");
+        using var staff = await aspire.CreateHostClientAsync("staff");
+
+        var ticket = await Json(staff, $"/tickets/tickets/all-tenants/{id}");
+
+        ticket["id"]!.GetValue<Guid>().ShouldBe(id);
+        ticket["subject"]!.GetValue<string>().ShouldStartWith("Read by staff");
+        ticket["description"]!.GetValue<string>().ShouldBe("Signed in per tenant.");
+    }
+
+    [Fact]
+    public async Task Staff_reading_a_ticket_nobody_raised_is_not_found()
+    {
+        using var staff = await aspire.CreateHostClientAsync("staff");
+
+        using var response = await staff.GetAsync(new Uri($"/tickets/tickets/all-tenants/{Guid.CreateVersion7()}", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Theory]
+    [InlineData("developer")]
+    [InlineData("developer-b")]
+    [InlineData("visitor")]
+    public async Task A_user_in_a_tenant_cannot_read_a_ticket_across_tenants_not_even_their_own(string user)
+    {
+        using var customer = await aspire.CreateHostClientAsync("developer");
+        var id = await RaiseAsync(customer, $"Across tenants {Guid.CreateVersion7()}");
+        using var client = await aspire.CreateHostClientAsync(user);
+
+        using var response = await client.GetAsync(new Uri($"/tickets/tickets/all-tenants/{id}", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task An_anonymous_caller_cannot_read_a_ticket_across_tenants()
+    {
+        using var client = aspire.CreateHostClient();
+
+        using var response = await client.GetAsync(new Uri($"/tickets/tickets/all-tenants/{Guid.CreateVersion7()}", UriKind.Relative), TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
     /// <summary>developer holds customer-admin, which includes customer-user; developer-b holds customer-user.</summary>
     [Theory]
     [InlineData("developer")]

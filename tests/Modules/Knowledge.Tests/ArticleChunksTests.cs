@@ -66,4 +66,22 @@ public class ArticleChunksTests
         ArticleChunks.Key(id, 0).ShouldBe("knowledge/articles/0193c0de-0000-7000-8000-000000000001/0");
         ArticleChunks.Key(id, 2).ShouldBe("knowledge/articles/0193c0de-0000-7000-8000-000000000001/2");
     }
+
+    [Fact]
+    public void A_chunks_key_names_its_article()
+    {
+        var article = ArticleId.New();
+
+        ArticleChunks.ArticleOf(ArticleChunks.Key(article, 3)).ShouldBe(Option<ArticleId>.Some(article));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("knowledge/articles/not-a-guid/0")]
+    [InlineData("knowledge/articles/0193c0de-0000-7000-8000-000000000011")]
+    [InlineData("knowledge/articles/0193c0de-0000-7000-8000-000000000011/x")]
+    [InlineData("tickets/articles/0193c0de-0000-7000-8000-000000000011/0")]
+    [InlineData("knowledge/articles/0193c0de-0000-7000-8000-000000000011/0/1")]
+    public void A_key_that_is_not_a_chunks_names_no_article(string key) =>
+        ArticleChunks.ArticleOf(key).HasValue.ShouldBeFalse();
 }

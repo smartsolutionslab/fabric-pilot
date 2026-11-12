@@ -10,6 +10,7 @@ vi.mock('./TicketsPage', () => ({ TicketsPage: () => <h1>Tenant tickets</h1> }))
 vi.mock('./AllTenantsTicketsPage', () => ({ AllTenantsTicketsPage: () => <h1>Every tenant</h1> }));
 vi.mock('./RaiseTicketPage', () => ({ RaiseTicketPage: () => <h1>Raise a ticket</h1> }));
 vi.mock('./TicketPage', () => ({ TicketPage: () => <h1>One ticket</h1> }));
+vi.mock('./StaffTicketPage', () => ({ StaffTicketPage: () => <h1>A tenant's ticket for staff</h1> }));
 
 afterEach(cleanup);
 
@@ -58,6 +59,13 @@ test('staff opening tickets see every tenant’s tickets', () => {
   renderAs('staff');
 
   expect(screen.getByRole('heading', { name: 'Every tenant' })).toBeInTheDocument();
+});
+
+test('staff opening a ticket see it as staff, with the suggested answer, not the customer’s page', () => {
+  renderAs('staff', '/b1');
+
+  expect(screen.getByRole('heading', { name: "A tenant's ticket for staff" })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'One ticket' })).not.toBeInTheDocument();
 });
 
 test('a signed-in user without customer-user opening tickets is told access is denied instead of the list', () => {
