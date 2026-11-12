@@ -33,7 +33,8 @@ public class DownloadAttachmentTests
             await stream.CopyToAsync(content, TestContext.Current.CancellationToken);
         }
 
-        content.ToArray().ShouldBe(new byte[] { 0xFF, 0xD8, 0x00, 0x01 });
+        byte[] stored = [0xFF, 0xD8, 0x00, 0x01];
+        content.ToArray().ShouldBe(stored);
     }
 
     [Fact]

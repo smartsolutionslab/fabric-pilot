@@ -5,7 +5,7 @@ namespace FabricPilot.Modules.Tickets.Tests;
 /// <summary>Blobs by name, in memory: what was uploaded is what is read back.</summary>
 internal sealed class InMemoryBlobStore : IBlobStore
 {
-    public Dictionary<string, byte[]> Blobs { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, byte[]> Blobs { get; } = [];
 
     public async Task UploadAsync(string name, Stream content, CancellationToken cancellationToken)
     {
