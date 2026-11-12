@@ -49,6 +49,16 @@ public class ArticleChunksTests
     }
 
     [Fact]
+    public void The_longest_article_has_no_more_chunks_than_the_maximum_count()
+    {
+        // Paragraphs that just miss packing together: each chunk holds one of them.
+        var pair = $"{new string('a', ArticleChunks.MaximumLength - 2)}\n\nb\n\n";
+        var body = string.Concat(Enumerable.Repeat(pair, (Article.MaximumBodyLength / pair.Length) + 1))[..Article.MaximumBodyLength];
+
+        ArticleChunks.Of("Title", body).Count.ShouldBeLessThanOrEqualTo(ArticleChunks.MaximumCount);
+    }
+
+    [Fact]
     public void A_chunks_key_names_its_article_and_its_position()
     {
         var id = new ArticleId(Guid.Parse("0193c0de-0000-7000-8000-000000000001"));

@@ -1,27 +1,33 @@
 using FabricPilot.Modules.Knowledge.Application;
-using FabricPilot.Modules.Knowledge.Domain.Articles;
 
 namespace FabricPilot.Modules.Knowledge.Tests;
 
-/// <summary>The shared vector index, in memory: each chunk's text under its key.</summary>
-internal sealed class InMemoryArticleIndex : IArticleIndex
+/// <summary>The shared vector index, in memory: each chunk's text under its key, and how many writes ran without the article's lock.</summary>
+internal sealed class InMemoryArticleIndex(InMemoryArticleLocks locks) : IArticleIndex
 {
     public Dictionary<string, string> Chunks { get; } = [];
 
-    public Task ReplaceAsync(ArticleId article, IReadOnlyList<string> chunks, int previousChunkCount, CancellationToken cancellationToken)
+    public int WritesOutsideTheLock { get; private set; }
+
+    public Task IndexAsync(string key, string text, CancellationToken cancellationToken)
     {
-        Ensure.That(chunks).IsNotNull();
-
-        foreach (var (position, chunk) in chunks.Index())
-        {
-            Chunks[ArticleChunks.Key(article, position)] = chunk;
-        }
-
-        for (var position = chunks.Count; position < previousChunkCount; position++)
-        {
-            Chunks.Remove(ArticleChunks.Key(article, position));
-        }
-
+        Count();
+        Chunks[key] = text;
         return Task.CompletedTask;
+    }
+
+    public Task RemoveAsync(string key, CancellationToken cancellationToken)
+    {
+        Count();
+        Chunks.Remove(key);
+        return Task.CompletedTask;
+    }
+
+    private void Count()
+    {
+        if (locks.Held == 0)
+        {
+            WritesOutsideTheLock++;
+        }
     }
 }

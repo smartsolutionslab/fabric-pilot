@@ -150,6 +150,42 @@ test('a published article offers no publishing again', async () => {
   expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
 });
 
+test('a draft with unsaved changes cannot be published until they are saved', async () => {
+  const user = userEvent.setup();
+  renderEditor('/knowledge/manage/d1');
+
+  await user.type(await screen.findByLabelText('Text'), ' More.');
+
+  expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled();
+  expect(screen.getByText('Save your changes before publishing.')).toBeInTheDocument();
+  expect(publish).not.toHaveBeenCalled();
+});
+
+test('an article that is still loading shows no form to type into', () => {
+  vi.mocked(useGetKnowledgeArticlesManageByArticleIdQuery).mockReturnValue({
+    data: undefined,
+    isLoading: true,
+    isError: false,
+  } as never);
+  renderEditor('/knowledge/manage/d1');
+
+  expect(screen.getByText('Loading…')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+});
+
+test('an article that cannot be loaded says so and offers no form', () => {
+  vi.mocked(useGetKnowledgeArticlesManageByArticleIdQuery).mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isError: true,
+  } as never);
+  renderEditor('/knowledge/manage/d1');
+
+  expect(screen.getByRole('alert')).toHaveTextContent('The article could not be loaded.');
+  expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
+});
+
 test('the Article editor page has no accessibility violations axe can find', async () => {
   const { container } = renderEditor('/knowledge/manage/d1');
   expect(await screen.findByRole('heading', { name: 'Edit an article' })).toBeInTheDocument();

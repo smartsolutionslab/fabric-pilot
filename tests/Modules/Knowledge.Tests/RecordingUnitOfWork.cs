@@ -12,6 +12,9 @@ internal sealed class RecordingUnitOfWork(InMemoryArticleStore articles) : IKnow
 
     public int Commits { get; private set; }
 
+    /// <summary>The next commit fails, as a lost connection would, and saves nothing.</summary>
+    public bool FailNextCommit { get; set; }
+
     public Task PublishAsync(IntegrationEvent integrationEvent)
     {
         queued.Add(integrationEvent);
@@ -20,6 +23,13 @@ internal sealed class RecordingUnitOfWork(InMemoryArticleStore articles) : IKnow
 
     public Task CommitAsync(CancellationToken cancellationToken)
     {
+        if (FailNextCommit)
+        {
+            FailNextCommit = false;
+            queued.Clear();
+            throw new InvalidOperationException("The commit failed.");
+        }
+
         articles.Commit();
         Published.AddRange(queued);
         queued.Clear();

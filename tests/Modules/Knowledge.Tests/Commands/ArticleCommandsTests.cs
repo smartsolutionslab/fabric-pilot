@@ -14,12 +14,14 @@ public class ArticleCommandsTests
     private static readonly DateTimeOffset Now = new(2026, 11, 12, 10, 0, 0, TimeSpan.Zero);
 
     private readonly InMemoryArticleStore articles = new();
-    private readonly InMemoryArticleIndex index = new();
+    private readonly InMemoryArticleLocks locks = new();
+    private readonly InMemoryArticleIndex index;
     private readonly FakeTimeProvider time = new(Now);
     private readonly RecordingUnitOfWork unitOfWork;
 
     public ArticleCommandsTests()
     {
+        index = new InMemoryArticleIndex(locks);
         unitOfWork = new RecordingUnitOfWork(articles);
     }
 
@@ -153,12 +155,65 @@ public class ArticleCommandsTests
         result.Error.Status.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task When_publishing_fails_to_commit_nothing_of_the_draft_is_searchable()
+    {
+        var id = (await Write("Unreleased", "Text nobody may find yet.")).Value;
+        unitOfWork.FailNextCommit = true;
+
+        await Should.ThrowAsync<InvalidOperationException>(() => Publish(id));
+
+        index.Chunks.ShouldBeEmpty();
+        unitOfWork.Published.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task When_an_edit_fails_to_commit_the_index_keeps_the_published_text()
+    {
+        var id = (await Write("Title", "Published text.")).Value;
+        await Publish(id);
+        var indexed = new Dictionary<string, string>(index.Chunks);
+        unitOfWork.FailNextCommit = true;
+
+        await Should.ThrowAsync<InvalidOperationException>(() => Edit(id, "Title", "Text that was never saved."));
+
+        index.Chunks.ShouldBe(indexed);
+    }
+
+    [Fact]
+    public async Task Indexing_removes_every_chunk_beyond_the_articles_own_whatever_the_index_held()
+    {
+        var id = (await Write("Title", "One paragraph.")).Value;
+        var article = articles.Saved.Single();
+        foreach (var position in Enumerable.Range(0, 5))
+        {
+            index.Chunks[ArticleChunks.Key(article.Id, position)] = "text another edit left behind";
+        }
+
+        await Publish(id);
+
+        index.Chunks.Keys.ShouldBe([ArticleChunks.Key(article.Id, 0)]);
+    }
+
+    [Fact]
+    public async Task Publishing_and_editing_hold_the_articles_lock_while_they_read_save_and_index()
+    {
+        var id = (await Write("Title", "Body")).Value;
+
+        await Publish(id);
+        await Edit(id, "Title", "New body");
+
+        locks.Locked.ShouldBe([new ArticleId(id), new ArticleId(id)]);
+        locks.Held.ShouldBe(0);
+        index.WritesOutsideTheLock.ShouldBe(0);
+    }
+
     private Task<Result<Guid, ApiError>> Write(string title, string body) =>
         new WriteArticleHandler(articles, unitOfWork, time).HandleAsync(new WriteArticle(title, body), TestContext.Current.CancellationToken);
 
     private Task<Result<Unit, ApiError>> Publish(Guid id) =>
-        new PublishArticleHandler(articles, index, unitOfWork, time).HandleAsync(new PublishArticle(id), TestContext.Current.CancellationToken);
+        new PublishArticleHandler(articles, index, locks, unitOfWork, time).HandleAsync(new PublishArticle(id), TestContext.Current.CancellationToken);
 
     private Task<Result<Unit, ApiError>> Edit(Guid id, string title, string body) =>
-        new EditArticleHandler(articles, index, unitOfWork, time).HandleAsync(new EditArticle(id, title, body), TestContext.Current.CancellationToken);
+        new EditArticleHandler(articles, index, locks, unitOfWork, time).HandleAsync(new EditArticle(id, title, body), TestContext.Current.CancellationToken);
 }
