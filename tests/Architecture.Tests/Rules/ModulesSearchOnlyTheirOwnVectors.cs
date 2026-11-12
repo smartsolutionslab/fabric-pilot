@@ -5,7 +5,8 @@ using FabricPilot.BuildingBlocks.Rag;
 namespace FabricPilot.Architecture.Tests.Rules;
 
 /// <summary>
-/// A module's vectors are its own: every <see cref="ModuleVectorIndex{TContext}"/> a module's type names, in a field,
+/// A module's vectors are its own: every <see cref="ModuleVectorIndex{TContext}"/> and
+/// <see cref="SharedVectorIndex{TContext}"/> a module's type names, in a field,
 /// property, signature, local or method body, has that module's own DbContext as its context, never a generic
 /// parameter a caller could fill with another's; and no module passes another module's DbContext to a generic type or
 /// method, which could reach that module's vectors for it. Another module's records are reached through
@@ -20,14 +21,14 @@ public sealed class ModulesSearchOnlyTheirOwnVectors : IArchitectureRule
     private const BindingFlags Declared = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
     /// <summary>Compared by name: the module assemblies are loaded from the test output, beside this one.</summary>
-    private static readonly string Index = typeof(ModuleVectorIndex<>).FullName!;
+    private static readonly string[] Indexes = [typeof(ModuleVectorIndex<>).FullName!, typeof(SharedVectorIndex<>).FullName!];
 
     private static readonly Dictionary<short, OpCode> OpCodesByValue = typeof(OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
         .Select(field => (OpCode)field.GetValue(null)!)
         .ToDictionary(code => code.Value);
 
-    public string Description => "A module uses ModuleVectorIndex<TContext> only with its own DbContext, never over a generic parameter, and passes no other module's DbContext to a generic type or method: no module searches another module's vectors.";
+    public string Description => "A module uses ModuleVectorIndex<TContext> and SharedVectorIndex<TContext> only with its own DbContext, never over a generic parameter, and passes no other module's DbContext to a generic type or method: no module searches another module's vectors.";
 
     public IEnumerable<string> Violations(ArchitectureModel model)
     {
@@ -223,16 +224,17 @@ public sealed class ModulesSearchOnlyTheirOwnVectors : IArchitectureRule
         var arguments = used.GetGenericArguments();
         var definition = used.GetGenericTypeDefinition();
         List<string> findings = [];
-        if (definition.FullName == Index)
+        if (Indexes.Contains(definition.FullName))
         {
+            var index = definition.Name.Split('`')[0];
             var context = arguments[0];
             if (context.IsGenericParameter)
             {
-                findings.Add($"{type.FullName} (module {module}) uses ModuleVectorIndex<{context.Name}> over a generic parameter, which a caller could fill with another module's DbContext. A module's index names its own DbContext.");
+                findings.Add($"{type.FullName} (module {module}) uses {index}<{context.Name}> over a generic parameter, which a caller could fill with another module's DbContext. A module's index names its own DbContext.");
             }
             else if (OwnerOf(context) is { } owner && owner != module)
             {
-                findings.Add($"{type.FullName} (module {module}) uses ModuleVectorIndex<{context.Name}>, module {owner}'s vectors. A module searches only its own vectors; reach another module's records through src/Contracts.");
+                findings.Add($"{type.FullName} (module {module}) uses {index}<{context.Name}>, module {owner}'s vectors. A module searches only its own vectors; reach another module's records through src/Contracts.");
             }
         }
         else

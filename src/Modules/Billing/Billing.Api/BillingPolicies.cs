@@ -1,4 +1,5 @@
 using FabricPilot.BuildingBlocks.Modules;
+using FabricPilot.BuildingBlocks.Tenancy;
 using FabricPilot.Modules.Billing.Application;
 using Microsoft.AspNetCore.Authorization;
 
@@ -15,5 +16,7 @@ public sealed class BillingPolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(BillingPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        policies.AddPolicy(BillingPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(BillingPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

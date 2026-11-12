@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/AppHost/AppHost.csproj" />
+    <!-- The contracts tests record contracts through the module's DbContext: no use case records one yet. -->
+    <ProjectReference Include="../../src/Modules/Contracts/Contracts.Infrastructure/Contracts.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,8 @@ namespace FabricPilot.BuildingBlocks.Rag;
 /// The vector tables: one <c>embeddings</c> table in each module's schema, with an HNSW index for cosine distance.
 /// Each record belongs to a tenant: <c>tenant_id</c> leads the primary key, so a key is unique within a tenant and
 /// the key's index also finds one tenant's records.
+/// Beside it, a <c>shared_embeddings</c> table holds the module's records shared by all tenants, with an HNSW index of
+/// its own, so no tenant's vectors crowd them out of a search.
 /// The MigrationRunner creates them after the modules' migrations; the host never creates or alters them.
 /// </summary>
 public static class VectorTables
@@ -41,6 +43,14 @@ public static class VectorTables
         return $"{Quote(schema)}.embeddings";
     }
 
+    /// <summary>The quoted name of the schema's table of records shared by all tenants.</summary>
+    public static string SharedTable(string schema)
+    {
+        Ensure.That(schema).IsNotNullOrWhiteSpace();
+
+        return $"{Quote(schema)}.shared_embeddings";
+    }
+
     /// <summary>
     /// Creates the <c>vector</c> extension, then each schema's <c>embeddings</c> table and its index; what exists
     /// already is left as it is, so running it again changes nothing. One transaction, holding an advisory lock, so two
@@ -62,6 +72,9 @@ public static class VectorTables
             await ExecuteAsync(connection, $"CREATE SCHEMA IF NOT EXISTS {Quote(schema)}", cancellationToken);
             await ExecuteAsync(connection, $"CREATE TABLE IF NOT EXISTS {table} (tenant_id text not null, key text not null, content text not null, embedding vector({Dimensions}) not null, primary key (tenant_id, key))", cancellationToken);
             await ExecuteAsync(connection, $"CREATE INDEX IF NOT EXISTS embeddings_embedding_hnsw ON {table} USING hnsw (embedding vector_cosine_ops)", cancellationToken);
+            var shared = SharedTable(schema);
+            await ExecuteAsync(connection, $"CREATE TABLE IF NOT EXISTS {shared} (key text primary key, content text not null, embedding vector({Dimensions}) not null)", cancellationToken);
+            await ExecuteAsync(connection, $"CREATE INDEX IF NOT EXISTS shared_embeddings_embedding_hnsw ON {shared} USING hnsw (embedding vector_cosine_ops)", cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);

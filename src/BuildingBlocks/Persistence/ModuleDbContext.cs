@@ -15,6 +15,12 @@ public abstract class ModuleDbContext(DbContextOptions options, IServiceProvider
     /// <summary>The tenant whose rows this context sees (tenancy: column).</summary>
     public string? CurrentTenantId => Services.GetService<FabricPilot.BuildingBlocks.Tenancy.ITenantContext>()?.TenantId;
 
+    /// <summary>Whether this context sees every tenant's rows: inside an endpoint mapped with AcrossTenants(). It then saves nothing.</summary>
+    public bool ReadsAllTenants => Services.GetService<FabricPilot.BuildingBlocks.Tenancy.ITenantContext>()?.ReadsAllTenants ?? false;
+
+    /// <summary>Whether this context writes the records shared by all tenants: inside an endpoint mapped with WritesSharedRecords(). It then saves nothing else.</summary>
+    public bool WritesSharedRecords => Services.GetService<FabricPilot.BuildingBlocks.Tenancy.ITenantContext>()?.WritesSharedRecords ?? false;
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         BeforeSaving();
@@ -55,6 +61,8 @@ public abstract class ModuleDbContext(DbContextOptions options, IServiceProvider
 
         // Per instance: an interceptor may keep state for the context it belongs to.
         optionsBuilder.AddInterceptors(
+            new FabricPilot.BuildingBlocks.Tenancy.AllTenantsWriteNothing(this),
+            new FabricPilot.BuildingBlocks.Tenancy.SharedRecordsBulkWriteGuard(this),
             new FabricPilot.BuildingBlocks.DomainEvents.DomainEventDispatch(Services));
         base.OnConfiguring(optionsBuilder);
     }
