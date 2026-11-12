@@ -82,6 +82,8 @@ public class BillingInvoicesTests(AspireFixture aspire)
         using var response = await client.GetAsync(Pdf(Guid.CreateVersion7()), TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        var problem = await response.Content.ReadFromJsonAsync<JsonObject>(TestContext.Current.CancellationToken);
+        problem!["code"]!.GetValue<string>().ShouldBe("billing.invoice-not-found");
     }
 
     [Theory]
