@@ -48,6 +48,16 @@ public class PdfSharpInvoiceRendererTests
         text.ShouldContain("Total 100.00 EUR");
     }
 
+    [Fact]
+    public void A_description_outside_the_western_european_code_page_keeps_every_character()
+    {
+        var invoice = Invoice.Issue(InvoiceId.New(), "2026-0044", new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), "PLN", [Line("Serwis drukarek Łódź – Żółć", 1, 10m)]).Value;
+
+        var text = Text(new PdfSharpInvoiceRenderer().Render(invoice));
+
+        text.ShouldContain("Serwis drukarek Łódź – Żółć");
+    }
+
     private static InvoiceLine Line(string description, int quantity, decimal unitPrice) =>
         InvoiceLine.Describe(description, quantity, unitPrice).Value;
 
