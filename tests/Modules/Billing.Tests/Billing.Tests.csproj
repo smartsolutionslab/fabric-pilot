@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../src/Modules/Billing/Billing.Api/Billing.Api.csproj" />
+    <!-- Reads the text back out of the PDFs the module renders. -->
+    <PackageReference Include="PdfPig" />
     <Compile Include="../../Fakes/*.cs" Link="Fakes/%(Filename)%(Extension)" />
   </ItemGroup>
 
