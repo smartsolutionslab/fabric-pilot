@@ -5,6 +5,7 @@ using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 using FabricPilot.BuildingBlocks.Rag;
 using FabricPilot.BuildingBlocks.Tenancy;
+using FabricPilot.Modules.Knowledge.Infrastructure;
 using FabricPilot.Modules.Knowledge.Infrastructure.Persistence;
 using FabricPilot.Tests.Fakes;
 
@@ -165,6 +166,52 @@ public class KnowledgeArticlesTests(AspireFixture aspire)
         (await edit.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("knowledge.article-being-changed");
         publishAgain.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await JsonAsync(staff, $"{ManagedArticles}/{id}"))["body"]!.GetValue<string>().ShouldBe($"Text {word}.");
+    }
+
+    [Fact]
+    public async Task While_the_lock_pool_is_full_another_article_answers_409_the_shared_index_stays_searchable_and_the_held_changes_complete()
+    {
+        var word = UniqueWord();
+        var anchorWord = UniqueWord();
+        using var staff = await aspire.CreateHostClientAsync("staff");
+        var anchor = await WriteAsync(staff, $"Anchor {anchorWord}", $"Searchable {anchorWord}.");
+        await PublishAsync(staff, anchor);
+        List<Guid> articles = [];
+        for (var position = 0; position <= ArticleLocks.Capacity; position++)
+        {
+            articles.Add(await WriteAsync(staff, $"Held {word} {position}", $"Text {word} {position}."));
+        }
+
+        using var slowEmbeddings = aspire.Embeddings.Hold(word);
+        List<Task<HttpResponseMessage>> held = [.. articles.Take(ArticleLocks.Capacity).Select(id => staff.PostAsync(new Uri($"{Articles}/{id}/publish", UriKind.Relative), null, TestContext.Current.CancellationToken))];
+        using (var allHeld = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+        {
+            while (slowEmbeddings.Waiting < ArticleLocks.Capacity)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100), allHeld.Token);
+            }
+        }
+
+        var extra = staff.PostAsync(new Uri($"{Articles}/{articles[^1]}/publish", UriKind.Relative), null, TestContext.Current.CancellationToken);
+        await Task.WhenAny(extra, Task.Delay(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        var searchedMeanwhile = await SharedPassagesAsync("tenant-a", $"Anchor {anchorWord} Searchable {anchorWord}.");
+        slowEmbeddings.Dispose();
+        using var extraResponse = await extra;
+        var heldResponses = await Task.WhenAll(held);
+
+        extraResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await extraResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("knowledge.article-being-changed");
+        searchedMeanwhile.ShouldHaveSingleItem().Key.ShouldBe($"knowledge/articles/{anchor}/0");
+        heldResponses.Select(response => response.StatusCode).ShouldAllBe(status => status == HttpStatusCode.NoContent);
+        foreach (var response in heldResponses)
+        {
+            response.Dispose();
+        }
+
+        foreach (var (position, id) in articles.Take(ArticleLocks.Capacity).Index())
+        {
+            (await SharedPassagesAsync("tenant-b", $"Held {word} {position} Text {word} {position}.")).ShouldHaveSingleItem().Key.ShouldBe($"knowledge/articles/{id}/0");
+        }
     }
 
     [Theory]

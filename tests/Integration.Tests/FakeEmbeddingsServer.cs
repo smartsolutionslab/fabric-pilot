@@ -145,15 +145,21 @@ public sealed class FakeEmbeddingsServer : IAsyncDisposable
     {
         private readonly TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int waiting;
 
         public Task Arrived => arrived.Task;
 
+        /// <summary>How many requests are being held back now.</summary>
+        public int Waiting => Volatile.Read(ref waiting);
+
         public void Dispose() => released.TrySetResult();
 
-        internal Task WaitAsync()
+        internal async Task WaitAsync()
         {
+            Interlocked.Increment(ref waiting);
             arrived.TrySetResult();
-            return released.Task;
+            await released.Task;
+            Interlocked.Decrement(ref waiting);
         }
     }
 }
