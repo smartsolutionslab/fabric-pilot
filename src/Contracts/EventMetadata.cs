@@ -6,5 +6,8 @@ namespace FabricPilot.Contracts;
 /// </summary>
 /// <param name="EventIdentifier">Guid v7, one per published event; the same on every delivery of it.</param>
 /// <param name="OccurredAt">When the event was published.</param>
-/// <param name="TenantId">The tenant whose work published the event.</param>
-public sealed record EventMetadata(Guid EventIdentifier, DateTimeOffset OccurredAt, string TenantId);
+/// <param name="TenantId">
+/// The tenant whose work published the event; null for an event that a write of records shared by all tenants published
+/// (an endpoint mapped with <c>WritesSharedRecords()</c>), which concerns every tenant and belongs to none.
+/// </param>
+public sealed record EventMetadata(Guid EventIdentifier, DateTimeOffset OccurredAt, string? TenantId);

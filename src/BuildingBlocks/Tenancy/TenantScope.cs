@@ -1,3 +1,5 @@
+using FabricPilot.Contracts;
+
 namespace FabricPilot.BuildingBlocks.Tenancy;
 
 /// <summary>Sets the tenant for work outside a request (consumers, jobs, tests) until disposed.</summary>
@@ -5,19 +7,73 @@ public static class TenantScope
 {
     private static readonly AsyncLocal<string?> Current = new();
 
+    private static readonly AsyncLocal<bool> All = new();
+
+    private static readonly AsyncLocal<bool> Shared = new();
+
+    private static readonly AsyncLocal<bool> Chosen = new();
+
     internal static string? TenantId => Current.Value;
+
+    /// <summary>Whether a scope chose the current work's tenant, or that it has none; the user's token decides otherwise.</summary>
+    internal static bool ChoosesTheTenant => Chosen.Value;
+
+    /// <summary>Whether the current work reads every tenant's rows: inside <see cref="AllTenants"/>, until a <see cref="Begin(string)"/> narrows it.</summary>
+    internal static bool ReadsAllTenants => All.Value;
+
+    /// <summary>Whether the current work writes the records shared by all tenants: inside <see cref="SharedRecords"/>.</summary>
+    internal static bool WritesSharedRecords => Shared.Value;
 
     public static IDisposable Begin(string tenantId)
     {
         Ensure.That(tenantId).IsNotNullOrWhiteSpace();
 
-        var previous = Current.Value;
-        Current.Value = tenantId;
-        return new Restore(previous);
+        return Open(tenantId, all: false, shared: false);
     }
 
-    private sealed class Restore(string? previous) : IDisposable
+    /// <summary>
+    /// The scope of the work an integration event started: its tenant's, or, for an event that a write of records shared
+    /// by all tenants published, no tenant at all. Without a tenant, the work reads the shared records, finds no
+    /// tenant's rows, and can save nothing.
+    /// </summary>
+    public static IDisposable Begin(EventMetadata metadata)
     {
-        public void Dispose() => Current.Value = previous;
+        Ensure.That(metadata).IsNotNull();
+
+        return metadata.TenantId is { } tenantId ? Begin(tenantId) : Open(null, all: false, shared: false);
+    }
+
+    /// <summary>
+    /// Reads every tenant's rows, and saves nothing, until disposed: there is no tenant to save for. Only an endpoint
+    /// mapped with <c>AcrossTenants()</c> opens it, after its policy has required the role in <see cref="CrossTenantRole"/>.
+    /// </summary>
+    internal static IDisposable AllTenants() => Open(null, all: true, shared: false);
+
+    /// <summary>
+    /// Writes the records shared by all tenants, and nothing else, until disposed; there is no tenant. Only an endpoint
+    /// mapped with <c>WritesSharedRecords()</c> opens it, after its policy has required the role in
+    /// <see cref="CrossTenantRole"/>.
+    /// </summary>
+    internal static IDisposable SharedRecords() => Open(null, all: false, shared: true);
+
+    private static Restore Open(string? tenantId, bool all, bool shared)
+    {
+        var restore = new Restore(Current.Value, All.Value, Shared.Value, Chosen.Value);
+        Current.Value = tenantId;
+        All.Value = all;
+        Shared.Value = shared;
+        Chosen.Value = true;
+        return restore;
+    }
+
+    private sealed class Restore(string? previous, bool previousAll, bool previousShared, bool previousChosen) : IDisposable
+    {
+        public void Dispose()
+        {
+            Current.Value = previous;
+            All.Value = previousAll;
+            Shared.Value = previousShared;
+            Chosen.Value = previousChosen;
+        }
     }
 }

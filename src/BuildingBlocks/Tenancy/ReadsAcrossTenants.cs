@@ -1,0 +1,4 @@
+namespace FabricPilot.BuildingBlocks.Tenancy;
+
+/// <summary>Marks an endpoint mapped with <c>AcrossTenants()</c>, so the architecture rule finds it in the endpoint table.</summary>
+public sealed class ReadsAcrossTenants;

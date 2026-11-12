@@ -7,4 +7,10 @@ namespace FabricPilot.Modules.Notifications.Application;
 public static class NotificationsPolicyNames
 {
     public const string Manage = "notifications.manage";
+
+    /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
+    public const string ReadAllTenants = "notifications.read-all-tenants";
+
+    /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
+    public const string WriteSharedRecords = "notifications.write-shared-records";
 }

@@ -90,3 +90,16 @@ test('twenty tickets or fewer need no pages', () => {
 
   expect(screen.queryByRole('navigation', { name: 'Pages' })).not.toBeInTheDocument();
 });
+
+// The file's first test also pays for warming up jsdom, React and axe, which in a larger project under parallel load
+// passes 2.5 s of the default 5 s.
+test('the Tickets page has no accessibility violations axe can find', { timeout: 20_000 }, async () => {
+  const { container } = render(
+    <MemoryRouter>
+      <TicketsPage />
+    </MemoryRouter>,
+  );
+  expect(await screen.findByRole('heading', { name: 'Tickets' })).toBeInTheDocument();
+
+  expect(await axe(container)).toHaveNoViolations();
+});
