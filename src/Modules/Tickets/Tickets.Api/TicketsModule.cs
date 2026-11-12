@@ -9,7 +9,7 @@ namespace FabricPilot.Modules.Tickets.Api;
 public sealed class TicketsModule : IModule
 {
     public void AddServices(IServiceCollection services, IConfiguration configuration) =>
-        services.AddModuleInfrastructure<TicketsModule>(configuration);
+        services.AddModuleInfrastructure<TicketsModule>(configuration).AddTicketsStorage(configuration);
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup("/tickets").MapModuleEndpoints<TicketsModule>();
