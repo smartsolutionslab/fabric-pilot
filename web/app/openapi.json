@@ -136,6 +136,20 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TicketSortField"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
           }
         ],
         "responses": {
@@ -332,6 +346,9 @@
           }
         }
       },
+      "SortDirection": {
+        "type": "integer"
+      },
       "Stream": {
         "type": "string",
         "format": "binary"
@@ -371,6 +388,9 @@
             }
           }
         }
+      },
+      "TicketSortField": {
+        "type": "integer"
       },
       "TicketSummaryDto": {
         "required": [
