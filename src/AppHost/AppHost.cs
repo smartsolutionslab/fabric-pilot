@@ -34,8 +34,9 @@ if (builder.ExecutionContext.IsRunMode)
     keycloak.WaitFor(mailpit);
 }
 // Blob storage for documents and ticket attachments: Azurite in a container locally, an Azure Storage account deployed.
+// Its files live in a volume, as the database's rows do, so a restart keeps a ticket and its attachments together.
 var blobs = builder.AddAzureStorage("storage")
-    .RunAsEmulator()
+    .RunAsEmulator(azurite => azurite.WithDataVolume())
     .AddBlobs("blobs");
 var messaging = builder.AddRabbitMQ("messaging")
     .WithManagementPlugin()
