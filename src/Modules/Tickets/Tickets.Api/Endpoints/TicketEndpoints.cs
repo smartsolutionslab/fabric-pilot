@@ -36,7 +36,8 @@ public sealed class TicketEndpoints : IEndpoint
         endpoints.MapGet("/tickets/{ticketId:guid}/attachments/{attachmentId:guid}", async (Guid ticketId, Guid attachmentId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
             (await dispatcher.QueryAsync(new DownloadAttachment(ticketId, attachmentId), cancellationToken))
                 // Always a download, never shown inline: an uploaded page must not run in the portal's origin.
-                .ToHttpResult(download => TypedResults.Stream(download.Content, "application/octet-stream", download.FileName)));
+                .ToHttpResult(download => TypedResults.Stream(download.Content, "application/octet-stream", download.FileName)))
+            .Produces<Stream>(StatusCodes.Status200OK, "application/octet-stream");
     }
 
     private static async Task<Results<Created<Guid>, ProblemHttpResult>> RaiseAsync(

@@ -209,7 +209,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stream"
+                }
+              }
+            }
           }
         }
       }
@@ -324,6 +331,10 @@
             "format": "int32"
           }
         }
+      },
+      "Stream": {
+        "type": "string",
+        "format": "binary"
       },
       "TicketDto": {
         "required": [
