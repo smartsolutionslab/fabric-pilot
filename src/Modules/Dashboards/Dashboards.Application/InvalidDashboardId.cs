@@ -1,5 +1,0 @@
-using System.Net;
-
-namespace FabricPilot.Modules.Dashboards.Application;
-
-public sealed record InvalidDashboardId() : ApiError("dashboards.invalid-id", "A dashboard's id is a Guid other than the empty one.", HttpStatusCode.BadRequest);

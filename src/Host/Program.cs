@@ -20,8 +20,6 @@ builder.Services.AddModuleVectorIndexes(builder.Configuration);
 builder.Services.AddDispatcher();
 builder.Services.AddTenancy();
 builder.Services.AddMessaging(builder.Configuration, modules);
-builder.Services.AddDashboardWidgets(modules);
-builder.Services.AddAgentUi(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
@@ -39,7 +37,6 @@ app.MapGet("/me", (System.Security.Claims.ClaimsPrincipal user) => TypedResults.
     .RequireAuthorization();
 app.MapGet("/me/tenant", (FabricPilot.BuildingBlocks.Tenancy.ITenantContext tenant) => TypedResults.Ok(new FabricPilot.Host.CurrentTenant(tenant.TenantId)))
     .RequireAuthorization();
-app.MapAgentUi();
 foreach (var module in modules)
 {
     module.MapEndpoints(app);

@@ -1,4 +1,0 @@
-namespace FabricPilot.BuildingBlocks.Dashboards;
-
-/// <summary>What <see cref="WidgetCatalog.Scan"/> found in one module: its widgets, and each problem in words.</summary>
-public sealed record WidgetScan(IReadOnlyList<WidgetDefinition> Widgets, IReadOnlyList<string> Problems);

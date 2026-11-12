@@ -53,7 +53,6 @@ public static class Extensions
             .WithTracing(tracing => tracing
                 .AddSource(builder.Environment.ApplicationName)
                 .AddSource(ModelTelemetry)
-                .AddSource("Experimental.AGUI.Server")
                 .AddAspNetCoreInstrumentation(options =>
                     options.Filter = context =>
                         !context.Request.Path.StartsWithSegments(HealthEndpointPath)

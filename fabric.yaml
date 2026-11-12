@@ -44,9 +44,9 @@ project:
   frontend.design-system: none
   frontend.data-grid: tanstack-table
   frontend.charts: echarts
-  frontend.dashboards: [user-editable, generative]
+  frontend.dashboards: []
   frontend.realtime: none
-  frontend.agent-ui: ag-ui
+  frontend.agent-ui: none
   frontend.auth-client: oidc-client-ts
   frontend.pwa: "no"
   frontend.test.extras: [accessibility]
@@ -59,14 +59,6 @@ module-defaults:
   module.cqrs: logical
   module.communication: [integration-events]
 modules:
-  assistant:
-    module.style: crud
-    module.cqrs: logical
-    module.communication: [integration-events]
-  dashboards:
-    module.style: crud
-    module.cqrs: logical
-    module.communication: [integration-events]
   tickets:
     module.style: ddd
     module.ddd-depth: light

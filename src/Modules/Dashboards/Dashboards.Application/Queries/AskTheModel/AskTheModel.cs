@@ -1,6 +1,0 @@
-using FabricPilot.BuildingBlocks.Messaging;
-
-namespace FabricPilot.Modules.Dashboards.Application.Queries.AskTheModel;
-
-/// <summary>A sample of a use case that asks the project's model something; replace it with the module's own.</summary>
-public sealed record AskTheModel(string Question) : IQuery<Result<string, ApiError>>;

@@ -1,5 +1,0 @@
-using System.Net;
-
-namespace FabricPilot.Modules.Dashboards.Application;
-
-public sealed record UnknownWidget(string Source) : ApiError("dashboards.unknown-widget", $"{Source} is not a widget the modules declare for you.", HttpStatusCode.BadRequest);

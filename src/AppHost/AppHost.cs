@@ -45,9 +45,6 @@ var azureOpenAIApiKey = builder.AddParameter("azure-openai-api-key", secret: tru
 // The embedding deployment must name one in that resource: text-embedding-3-small (1536 dimensions) by default. A model
 // of another size needs vector tables of that size.
 var azureOpenAIEmbeddingDeployment = builder.AddParameter("azure-openai-embedding-deployment", "text-embedding-3-small", publishValueAsDefault: true);
-// The agent panel's stand-in model, for tests: only the tests set it to true, and the host takes it in Development only,
-// answering every agent with a stand-in instead of the provider's model.
-var modelStandIn = builder.AddParameter("model-stand-in", () => builder.Configuration["Parameters:model-stand-in"] ?? "false");
 
 var host = builder.AddProject<Projects.Host>("host")
     .WithHttpHealthCheck("/health")
@@ -62,8 +59,7 @@ var host = builder.AddProject<Projects.Host>("host")
     .WithEnvironment("AzureOpenAI__Endpoint", azureOpenAIEndpoint)
     .WithEnvironment("AzureOpenAI__Deployment", azureOpenAIDeployment)
     .WithEnvironment("AzureOpenAI__ApiKey", azureOpenAIApiKey)
-    .WithEnvironment("AzureOpenAI__EmbeddingDeployment", azureOpenAIEmbeddingDeployment)
-    .WithEnvironment("Agents__ModelStandIn", modelStandIn);
+    .WithEnvironment("AzureOpenAI__EmbeddingDeployment", azureOpenAIEmbeddingDeployment);
 
 builder.AddViteApp("web", "../../web/app")
     .WithPnpm()

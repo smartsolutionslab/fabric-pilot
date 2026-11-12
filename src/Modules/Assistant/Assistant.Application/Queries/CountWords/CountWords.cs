@@ -1,6 +1,0 @@
-using FabricPilot.BuildingBlocks.Messaging;
-
-namespace FabricPilot.Modules.Assistant.Application.Queries.CountWords;
-
-/// <summary>How many words a text has: the assistant's tool <c>count_words</c>, a use case like any other.</summary>
-public sealed record CountWords(string Text) : IQuery<Result<int, ApiError>>;

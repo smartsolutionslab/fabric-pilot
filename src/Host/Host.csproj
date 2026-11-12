@@ -18,8 +18,6 @@
     <PackageReference Include="WolverineFx.Postgresql" />
     <PackageReference Include="WolverineFx.RabbitMQ" />
 
-    <PackageReference Include="AGUI.Formatting" />
-    <PackageReference Include="AGUI.Server" />
   </ItemGroup>
 
 </Project>

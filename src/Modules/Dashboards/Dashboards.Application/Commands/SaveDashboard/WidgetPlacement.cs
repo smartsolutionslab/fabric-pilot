@@ -1,4 +1,0 @@
-namespace FabricPilot.Modules.Dashboards.Application.Commands.SaveDashboard;
-
-/// <summary>One widget on the grid: the declared widget it shows (<c>Source</c>), as what, and where.</summary>
-public sealed record WidgetPlacement(string Key, string Source, string Visual, int X, int Y, int Width, int Height);

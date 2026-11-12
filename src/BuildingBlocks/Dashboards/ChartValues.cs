@@ -1,4 +1,0 @@
-namespace FabricPilot.BuildingBlocks.Dashboards;
-
-/// <summary>One named series of a <see cref="ChartSeries"/>, with one value per category.</summary>
-public sealed record ChartValues(string Name, IReadOnlyList<decimal> Values);

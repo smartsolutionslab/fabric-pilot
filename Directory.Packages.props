@@ -46,8 +46,6 @@
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
-    <PackageVersion Include="AGUI.Formatting" Version="1.0.1" />
-    <PackageVersion Include="AGUI.Server" Version="1.0.1" />
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.5" />
   </ItemGroup>
 </Project>

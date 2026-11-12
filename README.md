@@ -21,7 +21,8 @@ The repository is regenerated (M4-40) from the released `fabric` tool with this 
 - profile `saas-ai-react`;
 - `backend.authorization: [roles, claims]`;
 - `backend.llm: azure-openai`, replacing the profile's `openai`. Local runs may use a plain OpenAI key through an OpenAI-compatible `/v1` endpoint (software-fabric#600);
-- `backend.llm.extras: [rag, evals]`.
+- `backend.llm.extras: [rag, evals]`;
+- `frontend.agent-ui: none` and `frontend.dashboards: []`: the profile's agent panel and generative dashboards are left out, because no feature needs them (owner decision, 2026-11-12).
 
 There are six modules: `tickets`, `contracts`, `billing`, `documents`, `knowledge` and `notifications`. Each is added with `fabric add-module`, never copied. The existing `billing` module from M1 is replaced by the regenerated one.
 

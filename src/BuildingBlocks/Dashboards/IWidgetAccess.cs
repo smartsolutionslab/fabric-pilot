@@ -1,7 +1,0 @@
-namespace FabricPilot.BuildingBlocks.Dashboards;
-
-/// <summary>Whether the calling user may see and run a widget: the policy it names, if any, decides.</summary>
-public interface IWidgetAccess
-{
-    Task<bool> AllowsAsync(WidgetDefinition widget, CancellationToken cancellationToken);
-}

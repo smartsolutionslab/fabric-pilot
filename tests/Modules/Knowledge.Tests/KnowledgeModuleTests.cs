@@ -25,9 +25,6 @@ public class KnowledgeModuleTests
         // The host registers the project's IChatClient; a module's test stands in for it and never calls a real model.
         services.AddSingleton<Microsoft.Extensions.AI.IChatClient>(_ => new FabricPilot.Tests.Fakes.FakeChatClient("unused"));
 
-        // The host provides the widget catalogue, the current user and the dispatcher a widget runs its query through.
-        services.AddDashboardWidgets([]).AddDispatcher();
-
         new KnowledgeModule().AddServices(services, configuration);
         var buildContainer = () => services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }).Dispose();
 

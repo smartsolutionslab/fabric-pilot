@@ -37,8 +37,8 @@ export default tseslint.config(
             { group: ['formik', 'react-final-form', 'final-form'], message: 'Use react-hook-form (docs/adr).' },
             { group: ['yup', 'joi', 'valibot'], message: 'Use zod (docs/adr).' },
             {
-              group: ['@copilotkit/*'],
-              message: 'Talk to the agents through the AgentPanel in src/agents, on @ag-ui/client (docs/adr).',
+              group: ['@ag-ui/*', '@copilotkit/*'],
+              message: 'This project has no agent panel (frontend.agent-ui: none); adding one is a project decision.',
             },
             { group: ['ag-grid-*'], message: 'Use DataTable from src/components/ui (docs/adr).' },
             {

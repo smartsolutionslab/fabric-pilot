@@ -1,7 +1,0 @@
-namespace FabricPilot.BuildingBlocks.Identity;
-
-/// <summary>The signed-in user of the current request, by the identity provider's stable subject; null when there is none.</summary>
-public interface ICurrentUser
-{
-    string? Subject { get; }
-}

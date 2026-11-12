@@ -1,6 +1,0 @@
-using FabricPilot.BuildingBlocks.Messaging;
-using FabricPilot.Modules.Dashboards.Application.DTOs;
-
-namespace FabricPilot.Modules.Dashboards.Application.Queries.ListDashboards;
-
-public sealed record ListDashboards(Page Page, PageSize PageSize) : IQuery<Result<PagedResult<DashboardSummaryDto>, ApiError>>;

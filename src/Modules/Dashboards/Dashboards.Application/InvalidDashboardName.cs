@@ -1,5 +1,0 @@
-using System.Net;
-
-namespace FabricPilot.Modules.Dashboards.Application;
-
-public sealed record InvalidDashboardName(int Maximum) : ApiError("dashboards.invalid-name", $"A dashboard's name is 1 to {Maximum} characters.", HttpStatusCode.BadRequest);

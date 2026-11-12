@@ -234,13 +234,6 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 - Reactions run after the changes that raised the event are committed: after `SaveChangesAsync`, or after `CommitAsync` of the transaction it was saved in; never after a rollback. Save with `SaveChangesAsync` and commit with `CommitAsync`; the synchronous calls, `TransactionScope`, `UseTransaction` and your own savepoints fail while events are pending.
 - A reaction runs in its own scope with its own DbContext: it may load, change and save aggregates. If it throws, the failure is logged as an error and the caller's changes stay committed; the caller is not told and nothing retries it. Work that must not be lost, or that another module needs, is an integration event, not a domain-event reaction.
 
-## Module style: CRUD
-
-- Entities are plain classes in the module's Domain project, one file each: an identifier and properties. No aggregate roots, domain events or entity base classes.
-- Map each entity in Infrastructure with an `IEntityTypeConfiguration<T>` under `Persistence/Configurations/`; never put EF Core or ASP.NET Core attributes on an entity. An architecture rule fails the build if the Domain project references either.
-- Validate the request in the use case before creating or changing an entity; there are no invariants hidden inside the entity.
-- A module whose rules outgrow this (invariants across entities, restricted state changes) needs another module style; escalate with `needs:decision`.
-
 ## DDD depth: light
 
 - Introduce a value object when a value has its own rules or meaning (`Money`, `EmailAddress`, `InvoiceNumber`); a plain `string` or `int` is fine for a value without rules.
@@ -369,37 +362,14 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 - Draw charts with `<Chart option={...} label="..." />` from `@/components/chart`; `label` says what the chart shows for screen readers.
 - Type options as `EChartsOption`; keep them at module scope or memoised.
 
-## Dashboards: user-editable
-
-- Users save dashboards of their own in the `dashboards` module, which the dashboards choice brings (`fabric add-module` refuses that name). A dashboard is its owner's alone, inside their tenant: every read filters by the owner from `ICurrentUser`, never by an id alone.
-- A dashboard shows only widgets a module declares. To offer one, implement `IModuleWidgets` (`FabricPilot.BuildingBlocks.Dashboards`) once in the module's Application project and declare each widget there: `.Chart("monthly-revenue", "Monthly revenue", () => new MonthlyRevenue())` for a query answering `Result<ChartSeries, ApiError>`, `.Table<OpenInvoices, OpenInvoiceRow>("open-invoices", "Open invoices", (page, pageSize) => new OpenInvoices(page, pageSize))` for one answering `Result<PagedResult<OpenInvoiceRow>, ApiError>`. `Modules/Dashboards/Dashboards.Application/DashboardsWidgets.cs` shows the shape.
-- A widget's query takes no arguments but the page; never let a dashboard, a request or a model choose what it reads. Never add an endpoint or a handler that runs a query named by the caller: `GET /dashboards/widgets/{id}` is the only way a widget runs, and it runs only declared ones.
-- A widget runs through the dispatcher, not through the endpoint that guards the same query, so a widget whose data needs a permission names its module's policy: `.Chart(..., () => new MonthlyRevenue(), BillingPolicyNames.Manage)`. A caller without it neither sees nor runs the widget.
-- A widget whose query is not one of its module's Application queries with exactly one handler, a repeated id, a policy its module does not register, or an `IModuleWidgets` outside an Application project fails the architecture rule `EveryWidgetIsADeclaredModuleQuery` and stops the host.
-- Saving is `PUT /dashboards/{id}` with an id the client chose (`Guid.CreateVersion7()` in .NET, a v7 UUID in the browser), removing is `DELETE`; both can be retried. Never add a `POST` that creates a dashboard.
-- The page is `web/app/src/dashboards/`: `DashboardEditor` (open or start a dashboard), `DashboardCanvas` (the react-grid-layout grid, 12 columns, and the forms), `PlacedWidget` (one widget on the grid, titled by its declaration from `useGetDashboardsWidgetDeclarationsByIdQuery`, never by the picker's page) and `WidgetView`, which draws a widget's data with `Chart` or `DataTable`. It reaches the host only through the generated hooks (`useGetDashboardsQuery`, `usePutDashboardsByIdMutation`, `useGetDashboardsWidgetsByIdQuery`, ...); a new module's widget appears in its picker by itself.
-- A new dashboard's id comes from `uuidV7()` (`@/dashboards/uuidV7`), never `crypto.randomUUID()`, so ids sort by time as the host's do. Keep the grid within the host's limits (`columns`, `tallest` in `@/dashboards/layout`): the host refuses anything outside them.
-
-## Generative dashboards
-
-- The `dashboards` module's agent (`Application/Agents/DashboardAgent.cs`, reached as `POST /agents/dashboards`) proposes widgets; the user accepts and saves them. Never give it, or any agent of the dashboards module, a command as a tool: `TheDashboardAgentSavesNothing` fails the build.
-- Its tools are `ListWidgets` and `ProposeWidget`, through `DispatcherTool.For`. A new kind of proposal is another query beside them, checked against `WidgetCatalog` and `IWidgetAccess` as `ProposeWidgetHandler` checks, never a query naming something outside the catalogue.
-- The run's state is the browser's open draft, untrusted: read it only through `DashboardDraft.Read`, which bounds its shape and size, and never save it or put it in the agent's instructions.
-- On the dashboard page, `DashboardAssistant` (`web/app/src/dashboards`) is the conversation with the agent; it sends the open draft through `useAgent`'s state getter (`draftState`) and hands each `propose_widget` result to `DashboardCanvas`, which shows it on the grid as a `PendingWidget`. Accept only changes the draft (`acceptProposal`) and Save persists it: never save from a proposal, and never trust a tool result without `readProposal`.
-
 ## Realtime: none
 
 - Need fresher data? Use the query's `pollingInterval` or `refetchOnFocus`; do not open WebSockets or SSE by hand.
 
-## Agent UI: AG-UI
+## Agent UI: none
 
-- The browser talks to agents through one host endpoint, `POST /agents/{name}`. Never add another AG-UI endpoint, in a module or the host, and never reference Agent Framework's AG-UI hosting (`Microsoft.Agents.AI.Hosting.AGUI*`); `AgentUiGoesThroughAQuery` fails the build.
-- To offer an agent to the panel, add a query record in the module's Application project under `Queries/<UseCase>/` implementing `IAgentConversation<TSelf>`: `public static string AgentName => "<lower-kebab-name>";` and `public static TSelf Start(IReadOnlyList<ChatMessage> messages, JsonElement? state) => new(messages, state);`. Its handler creates the agent (`Agents/`), runs it with `RunStreamingAsync(query.Messages, ...)` and returns `.AsChatResponseUpdatesAsync()` as a successful `Result`. Nothing else registers it.
-- Agent names are unique across modules; the host refuses to start on a duplicate.
-- `state` is the panel's, untrusted input: validate it before a tool or the model sees it.
-- In the web app, a conversation is `<AgentPanel agent="<name>" />` from `@/agents/AgentPanel`; the `assistant` module's page shows it. Never `fetch` an agent yourself: `connectAgent` (`src/agents`) posts to `/api/agents/{name}` on `@ag-ui/client` with the signed-in user's token. Do not install CopilotKit; lint refuses it.
-- Show what an agent says as text, never as HTML or Markdown rendered unescaped: its answer is untrusted input.
-- Test an agent's query with `ToolCallingChatClient` (`tests/Fakes`), as `tests/Modules/Assistant.Tests` does. The integration tests and `.github/scripts/e2e.sh` answer through the host's stand-in model, switched on by the AppHost parameter `model-stand-in`; never set it outside tests, and never call a real model from a test. Test a panel against a stream you send yourself, as `src/agents/AgentPanel.test.tsx` does.
+- There is no agent panel. Show an agent's answer by calling the command or query that runs it, through the generated API client, like any other use case.
+- Do not add an AG-UI or CopilotKit client (`@ag-ui/*`, `@copilotkit/*`) to the web app, or the AG-UI .NET SDK (`AGUI.*`) to a module; lint and an architecture rule fail the build. A panel is a project decision (`frontend.agent-ui: ag-ui`): escalate it with `needs:decision`.
 
 ## Browser sign-in: oidc-client-ts
 

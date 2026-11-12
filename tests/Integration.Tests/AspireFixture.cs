@@ -35,9 +35,6 @@ public sealed class AspireFixture : IAsyncLifetime
         // A resource that does not exist and a key-shaped value Azure does not accept: the integration tests never call the model.
         builder.Configuration["Parameters:azure-openai-endpoint"] = "https://not-a-real-resource.openai.azure.com";
         builder.Configuration["Parameters:azure-openai-api-key"] = "not-a-real-key";
-        // The agents answer through the host's stand-in model (Development only): the integration tests never call a model.
-        builder.Configuration["Parameters:model-stand-in"] = "true";
-
         // Embeddings use the chat model's azure-openai-endpoint and azure-openai-api-key, given their values above.
 
         app = await builder.BuildAsync(timeout.Token);

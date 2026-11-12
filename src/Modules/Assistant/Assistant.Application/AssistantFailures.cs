@@ -1,7 +1,0 @@
-namespace FabricPilot.Modules.Assistant.Application;
-
-/// <summary>Everything an assistant use case refuses, each with its own code.</summary>
-public static class AssistantFailures
-{
-    public static ApiError NothingToCount() => new NothingToCount();
-}
