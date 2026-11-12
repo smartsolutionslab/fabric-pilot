@@ -16,6 +16,8 @@ public sealed class TicketsPolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(TicketsPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        // customer-admin includes customer-user in the realm, so a tenant's admin holds this too.
+        policies.AddPolicy(TicketsPolicyNames.RaiseAndRead, policy => policy.RequireRole("customer-user"));
         policies.AddPolicy(TicketsPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(TicketsPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
     }
