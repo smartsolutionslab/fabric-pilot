@@ -12,6 +12,12 @@ public static partial class ArticleChunks
 {
     public const int MaximumLength = 1000;
 
+    /// <summary>
+    /// The most chunks the longest article can have: two neighbouring chunks hold more than <see cref="MaximumLength"/>
+    /// minus a paragraph break between them, or they would have been packed into one.
+    /// </summary>
+    public const int MaximumCount = (2 * ((Article.MaximumBodyLength / (MaximumLength - 2)) + 1)) + 1;
+
     private const string ParagraphBreak = "\n\n";
 
     private static readonly char[] WhiteSpace = [' ', '\t', '\n'];

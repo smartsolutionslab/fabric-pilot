@@ -4,11 +4,10 @@ using FabricPilot.Modules.Knowledge.Domain.Articles;
 namespace FabricPilot.Modules.Knowledge.Application.Commands.EditArticle;
 
 /// <summary>
-/// A published article is indexed again before the change is saved, so a search never finds text the article no longer
-/// has for longer than the request takes; if saving fails, the index already holds the new text, which the next edit
-/// replaces.
+/// Saves the change first and indexes a published article after, under the article's lock: the index never holds text
+/// that was not saved, and two edits never interleave their chunks.
 /// </summary>
-public sealed class EditArticleHandler(IArticleStore articles, IArticleIndex index, IKnowledgeUnitOfWork unitOfWork, TimeProvider time)
+public sealed class EditArticleHandler(IArticleStore articles, IArticleIndex index, IArticleLocks locks, IKnowledgeUnitOfWork unitOfWork, TimeProvider time)
     : ICommandHandler<EditArticle, Result<Unit, ApiError>>
 {
     public async Task<Result<Unit, ApiError>> HandleAsync(EditArticle command, CancellationToken cancellationToken)
@@ -16,26 +15,27 @@ public sealed class EditArticleHandler(IArticleStore articles, IArticleIndex ind
         Ensure.That(command).IsNotNull();
 
         var (articleId, title, body) = command;
-        var found = await articles.FindAsync(new ArticleId(articleId), cancellationToken);
+        var id = new ArticleId(articleId);
+        await using var articleLock = await locks.AcquireAsync(id, cancellationToken);
+        var found = await articles.FindAsync(id, cancellationToken);
         if (!found.HasValue)
         {
             return Failure(KnowledgeFailures.ArticleNotFound(articleId));
         }
 
         var article = found.Value;
-        var previousChunkCount = ArticleChunks.Of(article.Title, article.Body).Count;
         var edited = article.Edit(title, body, time.GetUtcNow());
         if (edited.IsFailure)
         {
             return Failure(KnowledgeFailures.From(edited.Error));
         }
 
+        await unitOfWork.CommitAsync(cancellationToken);
         if (article.State == ArticleState.Published)
         {
-            await index.ReplaceAsync(article.Id, ArticleChunks.Of(article.Title, article.Body), previousChunkCount, cancellationToken);
+            await index.ReplaceAsync(article, cancellationToken);
         }
 
-        await unitOfWork.CommitAsync(cancellationToken);
         return Success(Unit.Value);
     }
 }

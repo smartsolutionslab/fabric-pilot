@@ -1,6 +1,5 @@
 using FabricPilot.BuildingBlocks.Rag;
 using FabricPilot.Modules.Knowledge.Application;
-using FabricPilot.Modules.Knowledge.Domain.Articles;
 using FabricPilot.Modules.Knowledge.Infrastructure.Persistence;
 
 namespace FabricPilot.Modules.Knowledge.Infrastructure;
@@ -11,19 +10,7 @@ namespace FabricPilot.Modules.Knowledge.Infrastructure;
 /// </summary>
 public sealed class SharedArticleIndex(SharedVectorIndex<KnowledgeDbContext> index) : IArticleIndex
 {
-    public async Task ReplaceAsync(ArticleId article, IReadOnlyList<string> chunks, int previousChunkCount, CancellationToken cancellationToken)
-    {
-        Ensure.That(article).IsNotNull();
-        Ensure.That(chunks).IsNotNull();
+    public Task IndexAsync(string key, string text, CancellationToken cancellationToken) => index.IndexAsync(key, text, cancellationToken);
 
-        foreach (var (position, chunk) in chunks.Index())
-        {
-            await index.IndexAsync(ArticleChunks.Key(article, position), chunk, cancellationToken);
-        }
-
-        for (var position = chunks.Count; position < previousChunkCount; position++)
-        {
-            await index.RemoveAsync(ArticleChunks.Key(article, position), cancellationToken);
-        }
-    }
+    public Task RemoveAsync(string key, CancellationToken cancellationToken) => index.RemoveAsync(key, cancellationToken);
 }
