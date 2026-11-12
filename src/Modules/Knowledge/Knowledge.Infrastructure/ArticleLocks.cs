@@ -1,40 +1,47 @@
-using FabricPilot.BuildingBlocks.Rag;
 using FabricPilot.Modules.Knowledge.Application;
 using FabricPilot.Modules.Knowledge.Domain.Articles;
-using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace FabricPilot.Modules.Knowledge.Infrastructure;
 
 /// <summary>
 /// A PostgreSQL session advisory lock per article, so every instance of the host sees the same lock. It is tried, never
-/// waited for: only the change that holds it keeps a connection, and a refused change gives its connection back at once,
-/// so no waiter can drain the pool the holder needs to index.
+/// waited for, on a connection of the locks' own pool (<see cref="ArticleLockConnections"/>): a held lock keeps one of
+/// those, never one the vector indexes need, and a change that finds the lock or the pool taken is refused at once.
 /// </summary>
-public sealed class ArticleLocks([FromKeyedServices(VectorTables.DataSourceKey)] NpgsqlDataSource dataSource) : IArticleLocks
+public sealed class ArticleLocks(ArticleLockConnections connections) : IArticleLocks
 {
+    /// <summary>How many article changes one host runs at once; one more is refused until one of them is done.</summary>
+    public const int Capacity = 10;
+
     public async Task<Option<IAsyncDisposable>> TryAcquireAsync(ArticleId article, CancellationToken cancellationToken)
     {
         Ensure.That(article).IsNotNull();
 
+        var opened = await connections.TryOpenAsync(cancellationToken);
+        if (!opened.HasValue)
+        {
+            return Option<IAsyncDisposable>.None;
+        }
+
+        var lease = opened.Value;
         var key = KeyOf(article);
-        var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         try
         {
-            await using var command = new NpgsqlCommand("SELECT pg_try_advisory_lock($1)", connection);
+            await using var command = new NpgsqlCommand("SELECT pg_try_advisory_lock($1)", lease.Connection);
             command.Parameters.Add(new NpgsqlParameter { Value = key });
             if (await command.ExecuteScalarAsync(cancellationToken) is true)
             {
-                return Option<IAsyncDisposable>.Some(new Held(connection, key));
+                return Option<IAsyncDisposable>.Some(new Held(lease, key));
             }
         }
         catch
         {
-            await connection.DisposeAsync();
+            await lease.DisposeAsync();
             throw;
         }
 
-        await connection.DisposeAsync();
+        await lease.DisposeAsync();
         return Option<IAsyncDisposable>.None;
     }
 
@@ -45,14 +52,14 @@ public sealed class ArticleLocks([FromKeyedServices(VectorTables.DataSourceKey)]
         return BitConverter.ToInt64(bytes, 0) ^ BitConverter.ToInt64(bytes, 8);
     }
 
-    private sealed class Held(NpgsqlConnection connection, long key) : IAsyncDisposable
+    private sealed class Held(ArticleLockConnections.Lease lease, long key) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {
             // Closing the session releases its advisory locks too; unlocking first returns the pooled connection clean.
-            await using (connection)
+            await using (lease)
             {
-                await using var command = new NpgsqlCommand("SELECT pg_advisory_unlock($1)", connection);
+                await using var command = new NpgsqlCommand("SELECT pg_advisory_unlock($1)", lease.Connection);
                 command.Parameters.Add(new NpgsqlParameter { Value = key });
                 await command.ExecuteNonQueryAsync();
             }
