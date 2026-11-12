@@ -1,3 +1,4 @@
+import { skipToken } from '@reduxjs/toolkit/query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
@@ -14,8 +15,9 @@ vi.mock('@/api/generated', () => ({
   useLazyGetTicketsTicketsByTicketIdAttachmentsAndAttachmentIdQuery: vi.fn(),
 }));
 
+const ticketId = '019a7b3c-5d2e-7f10-8a4b-3c2d1e0f9a8b';
 const ticket = {
-  id: 't1',
+  id: ticketId,
   subject: 'Printer offline',
   description: 'It shows error 42.',
   priority: 'High',
@@ -44,9 +46,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderTicket() {
+function renderTicket(path = `/tickets/${ticketId}`) {
   return render(
-    <MemoryRouter initialEntries={['/tickets/t1']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/tickets/:ticketId" element={<TicketPage />} />
       </Routes>
@@ -57,7 +59,7 @@ function renderTicket() {
 test('a ticket shows its subject, description, priority and attachments', { timeout: 20_000 }, () => {
   renderTicket();
 
-  expect(useGetTicketsTicketsByTicketIdQuery).toHaveBeenCalledWith({ ticketId: 't1' });
+  expect(useGetTicketsTicketsByTicketIdQuery).toHaveBeenCalledWith({ ticketId });
   expect(screen.getByRole('heading', { name: 'Printer offline' })).toBeInTheDocument();
   expect(screen.getByText('It shows error 42.')).toBeInTheDocument();
   expect(screen.getByText('High')).toBeInTheDocument();
@@ -78,7 +80,7 @@ test('downloading an attachment saves its content under its file name', async ()
 
   await user.click(screen.getByRole('button', { name: 'Download app.log' }));
 
-  expect(download).toHaveBeenCalledWith({ ticketId: 't1', attachmentId: 'f2' });
+  expect(download).toHaveBeenCalledWith({ ticketId, attachmentId: 'f2' });
   expect(createObjectURL).toHaveBeenCalledWith(content);
   expect(clicked).toEqual([{ href: 'blob:the-log', download: 'app.log' }]);
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:the-log');
@@ -87,6 +89,32 @@ test('downloading an attachment saves its content under its file name', async ()
 
 test('the ticket has no accessibility violations axe can find', async () => {
   const { container } = renderTicket();
+
+  expect(await axe(container)).toHaveNoViolations();
+});
+
+test('an address whose ticket id is not a GUID never reaches the API', () => {
+  vi.mocked(useGetTicketsTicketsByTicketIdQuery).mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  } as never);
+  renderTicket('/tickets/not-a-guid');
+
+  expect(useGetTicketsTicketsByTicketIdQuery).toHaveBeenCalledWith(skipToken);
+  expect(useGetTicketsTicketsByTicketIdQuery).not.toHaveBeenCalledWith({ ticketId: 'not-a-guid' });
+  expect(screen.getByRole('alert')).toHaveTextContent('There is no such ticket.');
+  expect(screen.getByRole('link', { name: 'Back to the tickets' })).toBeInTheDocument();
+});
+
+test('an address with no such ticket has no accessibility violations axe can find', async () => {
+  vi.mocked(useGetTicketsTicketsByTicketIdQuery).mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  } as never);
+  const { container } = renderTicket('/tickets/not-a-guid');
+  expect(screen.getByRole('alert')).toHaveTextContent('There is no such ticket.');
 
   expect(await axe(container)).toHaveNoViolations();
 });
