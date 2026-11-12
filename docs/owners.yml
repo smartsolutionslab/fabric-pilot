@@ -2,6 +2,6 @@
 # the one with the fewest open assignments below the WIP limit gets it.
 wip-limit: 3
 lanes:
-  backend: { owners: [] }
-  frontend: { owners: [] }
-  infra: { owners: [] }
+  backend: { owners: [notonlywhite] }
+  frontend: { owners: [notonlywhite] }
+  infra: { owners: [notonlywhite] }

@@ -17,9 +17,15 @@ public static class IntegrationEventMetadata
         Ensure.That(services).IsNotNull();
 
         var time = services.GetRequiredService<TimeProvider>();
-        // Like a row, an event belongs to a tenant: one published without a tenant is refused, as saving one would be.
-        var tenantId = services.GetService<ITenantContext>()?.TenantId
-            ?? throw new InvalidOperationException($"{integrationEvent.GetType().Name} is published without a tenant; begin a TenantScope for work outside a request.");
+        // Like a row, an event belongs to a tenant: one published without a tenant is refused, as saving one would be,
+        // except where the records shared by all tenants are written, whose events concern every tenant.
+        var tenants = services.GetService<ITenantContext>();
+        var tenantId = tenants?.TenantId;
+        if (tenantId is null && tenants?.WritesSharedRecords != true)
+        {
+            throw new InvalidOperationException($"{integrationEvent.GetType().Name} is published without a tenant; begin a TenantScope for work outside a request, or publish from an endpoint mapped with WritesSharedRecords().");
+        }
+
         return integrationEvent with { Metadata = new EventMetadata(Guid.CreateVersion7(), time.GetUtcNow(), tenantId) };
     }
 }

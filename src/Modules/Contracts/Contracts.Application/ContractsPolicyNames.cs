@@ -7,4 +7,10 @@ namespace FabricPilot.Modules.Contracts.Application;
 public static class ContractsPolicyNames
 {
     public const string Manage = "contracts.manage";
+
+    /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
+    public const string ReadAllTenants = "contracts.read-all-tenants";
+
+    /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
+    public const string WriteSharedRecords = "contracts.write-shared-records";
 }

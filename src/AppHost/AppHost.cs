@@ -33,6 +33,11 @@ if (builder.ExecutionContext.IsRunMode)
         .WithHttpHealthCheck("/livez");
     keycloak.WaitFor(mailpit);
 }
+// Blob storage for documents and ticket attachments: Azurite in a container locally, an Azure Storage account deployed.
+// Its files live in a volume, as the database's rows do, so a restart keeps a ticket and its attachments together.
+var blobs = builder.AddAzureStorage("storage")
+    .RunAsEmulator(azurite => azurite.WithDataVolume())
+    .AddBlobs("blobs");
 var messaging = builder.AddRabbitMQ("messaging")
     .WithManagementPlugin()
     .WithDataVolume();
@@ -56,6 +61,8 @@ var host = builder.AddProject<Projects.Host>("host")
     .WithEnvironment("Authentication__Authority", ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realms/fabric-pilot"))
     .WithReference(messaging)
     .WaitFor(messaging)
+    .WithReference(blobs)
+    .WaitFor(blobs)
     .WithEnvironment("AzureOpenAI__Endpoint", azureOpenAIEndpoint)
     .WithEnvironment("AzureOpenAI__Deployment", azureOpenAIDeployment)
     .WithEnvironment("AzureOpenAI__ApiKey", azureOpenAIApiKey)

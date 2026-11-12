@@ -9,7 +9,8 @@ public static class VectorIndexRegistration
     private const string ConnectionStringName = "database";
 
     /// <summary>
-    /// Registers <see cref="ModuleVectorIndex{TContext}"/> for every module, over a data source of the connection
+    /// Registers <see cref="ModuleVectorIndex{TContext}"/> and <see cref="SharedVectorIndex{TContext}"/> for every module,
+    /// over a data source of the connection
     /// string <c>database</c> that knows the <c>vector</c> type. The connection string is read when an index is first
     /// needed; registering connects to nothing.
     /// An index is scoped, as the tenant source it reads is.
@@ -20,11 +21,13 @@ public static class VectorIndexRegistration
 
         return services
             .AddKeyedSingleton(VectorTables.DataSourceKey, (_, _) => VectorTables.DataSource(ConnectionString(configuration)))
-            .AddScoped(typeof(ModuleVectorIndex<>));
+            .AddScoped(typeof(ModuleVectorIndex<>))
+            .AddScoped(typeof(SharedVectorIndex<>));
     }
 
     /// <summary>
-    /// Creates the vector extension and each module's <c>embeddings</c> table, in the schema of its DbContext. A step
+    /// Creates the vector extension and each module's <c>embeddings</c> and <c>shared_embeddings</c> tables, in the
+    /// schema of its DbContext. A step
     /// of the MigrationRunner, after the modules' migrations, so hosts never create tables.
     /// </summary>
     public static Task CreateVectorTablesAsync(this IServiceProvider services, IEnumerable<Type> contexts, CancellationToken cancellationToken = default)

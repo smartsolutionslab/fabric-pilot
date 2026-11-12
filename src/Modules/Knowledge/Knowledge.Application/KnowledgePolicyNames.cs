@@ -7,4 +7,10 @@ namespace FabricPilot.Modules.Knowledge.Application;
 public static class KnowledgePolicyNames
 {
     public const string Manage = "knowledge.manage";
+
+    /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
+    public const string ReadAllTenants = "knowledge.read-all-tenants";
+
+    /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
+    public const string WriteSharedRecords = "knowledge.write-shared-records";
 }

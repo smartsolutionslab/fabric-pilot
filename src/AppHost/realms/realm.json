@@ -13,7 +13,8 @@
   },
   "roles": {
     "realm": [
-      { "name": "manager", "description": "Sample role: each module's sample policy <module>.manage requires it." }
+      { "name": "manager", "description": "Sample role: each module's sample policy <module>.manage requires it." },
+      { "name": "staff", "description": "Reads every tenant's rows on an endpoint mapped with AcrossTenants() and writes the records shared by all tenants on one mapped with WritesSharedRecords(); each module's policies <module>.read-all-tenants and <module>.write-shared-records require it." }
     ]
   },
   "groups": [
@@ -154,6 +155,16 @@
       "credentials": [{ "type": "password", "value": "analyst", "temporary": false }],
       "attributes": { "department": ["finance"] },
       "groups": ["/tenants/tenant-a"]
+    },
+    {
+      "username": "staff",
+      "enabled": true,
+      "email": "staff@example.com",
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Staff",
+      "credentials": [{ "type": "password", "value": "staff", "temporary": false }],
+      "realmRoles": ["staff"]
     }
   ]
 }

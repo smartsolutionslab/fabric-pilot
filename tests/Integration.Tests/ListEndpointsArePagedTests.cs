@@ -1,15 +1,20 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace FabricPilot.Integration.Tests;
 
 /// <summary>
-/// A list endpoint answers <see cref="PagedResult{T}"/> and takes <c>page</c> and <c>pageSize</c> from the query
-/// (docs/adr). Read from the OpenAPI document the running host serves: a GET whose success is a JSON array, or a
-/// <c>PagedResult</c>, is a list endpoint.
+/// A list endpoint answers <see cref="PagedResult{T}"/> and takes <c>page</c> and <c>pageSize</c> from the query, and
+/// one that sorts takes <c>sortBy</c> and <c>sortDirection</c>, named enums (docs/adr). Read from the OpenAPI document
+/// the running host serves: a GET whose success is a JSON array, or a <c>PagedResult</c>, is a list endpoint.
 /// </summary>
 public class ListEndpointsArePagedTests(AspireFixture aspire)
 {
     private const string PagedResultSchema = "#/components/schemas/PagedResultOf";
+
+    private const string ComponentSchemas = "#/components/schemas/";
+
+    private static readonly string[] SortParameters = ["sortBy", "sortDirection"];
 
     [Fact]
     public async Task Every_list_endpoint_answers_a_paged_result_and_takes_page_and_page_size()
@@ -40,6 +45,38 @@ public class ListEndpointsArePagedTests(AspireFixture aspire)
         violations.ShouldBeEmpty(string.Join(Environment.NewLine, violations));
     }
 
+    [Fact]
+    public async Task Every_list_endpoint_that_sorts_takes_sort_by_and_sort_direction_by_name()
+    {
+        using var client = aspire.CreateHostClient();
+        var document = JsonNode.Parse(await client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), TestContext.Current.CancellationToken))!;
+
+        List<string> violations = [];
+        foreach (var (path, item) in document["paths"]?.AsObject() ?? [])
+        {
+            var operation = item?["get"];
+            var schema = operation?["responses"]?["200"]?["content"]?["application/json"]?["schema"];
+            if (schema is null || !IsPagedResult(schema))
+            {
+                continue;
+            }
+
+            var sortParameters = SortParameters.Where(name => TakesFromQuery(operation!, name)).ToList();
+            if (sortParameters.Count == 1)
+            {
+                var missing = SortParameters.Single(name => name != sortParameters[0]);
+                violations.Add($"GET {path} takes {sortParameters[0]} without {missing}; a list endpoint that sorts takes both.");
+            }
+
+            foreach (var name in sortParameters.Where(name => !IsNamedEnum(document, QueryParameter(operation!, name)["schema"])))
+            {
+                violations.Add($"GET {path} takes {name} as a number; a sort field or direction is an enum the OpenAPI document names.");
+            }
+        }
+
+        violations.ShouldBeEmpty(string.Join(Environment.NewLine, violations));
+    }
+
     private static bool IsArray(JsonNode schema) =>
         schema["type"] switch
         {
@@ -54,4 +91,22 @@ public class ListEndpointsArePagedTests(AspireFixture aspire)
     private static bool TakesFromQuery(JsonNode operation, string name) =>
         operation["parameters"]?.AsArray().Any(parameter =>
             parameter?["in"]?.GetValue<string>() == "query" && parameter["name"]?.GetValue<string>() == name) == true;
+
+    private static JsonNode QueryParameter(JsonNode operation, string name) =>
+        operation["parameters"]!.AsArray().First(parameter =>
+            parameter?["in"]?.GetValue<string>() == "query" && parameter["name"]?.GetValue<string>() == name)!;
+
+    /// <summary>
+    /// Whether a schema, or the component it refers to, lists its values by name. An enum the host serializes as a
+    /// number is only <c>"type": "integer"</c>; one marked with <c>JsonStringEnumConverter</c> lists its names.
+    /// </summary>
+    private static bool IsNamedEnum(JsonNode document, JsonNode? schema)
+    {
+        if (schema?["$ref"]?.GetValue<string>() is { } reference && reference.StartsWith(ComponentSchemas, StringComparison.Ordinal))
+        {
+            schema = document["components"]?["schemas"]?[reference[ComponentSchemas.Length..]];
+        }
+
+        return schema?["enum"] is JsonArray values && values.Any(value => value?.GetValueKind() == JsonValueKind.String);
+    }
 }

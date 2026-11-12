@@ -4,4 +4,10 @@ namespace FabricPilot.BuildingBlocks.Tenancy;
 public interface ITenantContext
 {
     string? TenantId { get; }
+
+    /// <summary>Whether the current work reads every tenant's rows (an endpoint mapped with AcrossTenants()); it then has no tenant and saves nothing.</summary>
+    bool ReadsAllTenants => false;
+
+    /// <summary>Whether the current work writes the records shared by all tenants (an endpoint mapped with WritesSharedRecords()); it then has no tenant and saves nothing else.</summary>
+    bool WritesSharedRecords => false;
 }

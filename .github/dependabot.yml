@@ -12,6 +12,24 @@ updates:
     groups:
       nuget-minor-and-patch:
         update-types: [minor, patch]
+    # Versions the generator holds back on purpose: a newer one fails restore. Each says why and which issue lifts it.
+    ignore:
+      # EF Core stays at 11.0.0-rc.3.26522.148, the build Npgsql.EntityFrameworkCore.PostgreSQL 11.0.0-rc.3 requires
+      # exactly, so a newer one fails restore. Lifted by smartsolutionslab/software-fabric#551 (Npgsql 11.0.0), which
+      # removes these entries.
+      - dependency-name: Microsoft.EntityFrameworkCore
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: Microsoft.EntityFrameworkCore.Design
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: Microsoft.EntityFrameworkCore.Relational
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+
+      # Microsoft.CodeAnalysis.CSharp stays at 5.0.0: Wolverine's runtime compiler requires exactly Roslyn 5.0.0, so a
+      # newer one fails restore (NU1608). Lifted by smartsolutionslab/software-fabric#615, which removes this entry.
+      - dependency-name: Microsoft.CodeAnalysis.CSharp
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
 
   - package-ecosystem: github-actions
     directory: /
