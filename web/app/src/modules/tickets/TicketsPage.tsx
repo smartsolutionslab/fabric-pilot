@@ -23,7 +23,6 @@ const columns = tickets.columns([
 export function TicketsPage() {
   const [page, setPage] = useState(1);
   const { data, isError } = useGetTicketsTicketsQuery({ page, pageSize });
-  const total = Number(data?.totalCount ?? 0);
 
   return (
     <main className="flex flex-col gap-4 p-4">
@@ -34,17 +33,11 @@ export function TicketsPage() {
         </Button>
       </div>
       {isError ? <p role="alert">The tickets could not be loaded.</p> : null}
-      <DataTable columns={columns} data={data?.items ?? none} />
-      {total > pageSize ? (
-        <nav aria-label="Pages" className="flex gap-2">
-          <Button variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <Button variant="outline" disabled={page * pageSize >= total} onClick={() => setPage(page + 1)}>
-            Next
-          </Button>
-        </nav>
-      ) : null}
+      <DataTable
+        columns={columns}
+        data={data?.items ?? none}
+        paging={{ page, pageSize, totalCount: Number(data?.totalCount ?? 0), onPageChange: setPage }}
+      />
     </main>
   );
 }

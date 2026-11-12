@@ -1,12 +1,26 @@
 import { skipToken } from '@reduxjs/toolkit/query';
 import { Link, useParams } from 'react-router';
+import { z } from 'zod';
 import { useGetTicketsTicketsByTicketIdQuery } from '@/api/generated';
 import { AttachmentDownloadButton } from './AttachmentDownloadButton';
 
+const ticketIdSchema = z.uuid();
+
 /** One ticket as the customer raised it, with its files to download. */
 export function TicketPage() {
-  const { ticketId } = useParams();
-  const { data: ticket, isError } = useGetTicketsTicketsByTicketIdQuery(ticketId ? { ticketId } : skipToken);
+  const ticketId = ticketIdSchema.safeParse(useParams().ticketId);
+  const { data: ticket, isError } = useGetTicketsTicketsByTicketIdQuery(
+    ticketId.success ? { ticketId: ticketId.data } : skipToken,
+  );
+
+  if (!ticketId.success) {
+    return (
+      <main className="p-4">
+        <p role="alert">There is no such ticket.</p>
+        <Link to="..">Back to the tickets</Link>
+      </main>
+    );
+  }
 
   if (isError) {
     return (
