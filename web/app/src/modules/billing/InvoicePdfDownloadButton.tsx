@@ -30,14 +30,9 @@ export function InvoicePdfDownloadButton({ invoice }: { invoice: InvoiceSummaryD
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={saving}
-        aria-label={`Download invoice ${invoice.number} as PDF`}
-        onClick={() => void save()}
-      >
-        Download PDF
+      {/* The visible words stay in the button's name, so a speech user can say what they see (WCAG 2.5.3). */}
+      <Button variant="outline" size="sm" disabled={saving} onClick={() => void save()}>
+        Download <span className="sr-only">invoice {invoice.number} as</span> PDF
       </Button>
       {failed ? <span role="alert">Invoice {invoice.number} could not be downloaded.</span> : null}
     </>
