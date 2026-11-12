@@ -7,4 +7,10 @@ namespace FabricPilot.Modules.Billing.Application;
 public static class BillingPolicyNames
 {
     public const string Manage = "billing.manage";
+
+    /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
+    public const string ReadAllTenants = "billing.read-all-tenants";
+
+    /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
+    public const string WriteSharedRecords = "billing.write-shared-records";
 }

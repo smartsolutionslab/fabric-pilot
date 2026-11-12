@@ -7,7 +7,15 @@ public sealed class HttpTenantContext(IHttpContextAccessor accessor) : ITenantCo
 {
     private const string TenantGroupPrefix = "/tenants/";
 
-    public string? TenantId => TenantScope.TenantId ?? FromToken();
+    /// <summary>
+    /// The scope's, where one chose it: none inside <see cref="TenantScope.AllTenants"/> or
+    /// <see cref="TenantScope.SharedRecords"/>, whose work belongs to no tenant, and none for an event without one.
+    /// </summary>
+    public string? TenantId => TenantScope.ChoosesTheTenant ? TenantScope.TenantId : FromToken();
+
+    public bool ReadsAllTenants => TenantScope.ReadsAllTenants;
+
+    public bool WritesSharedRecords => TenantScope.WritesSharedRecords;
 
     private string? FromToken()
     {

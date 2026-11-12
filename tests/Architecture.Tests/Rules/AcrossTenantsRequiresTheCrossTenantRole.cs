@@ -1,0 +1,85 @@
+using FabricPilot.BuildingBlocks.Tenancy;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+
+namespace FabricPilot.Architecture.Tests.Rules;
+
+/// <summary>
+/// An endpoint mapped with <c>AcrossTenants()</c> reads every tenant's rows, so only staff may call it: its
+/// authorization, everything it and its group require combined, must require the role in <see cref="CrossTenantRole"/>
+/// alone (a requirement another role also meets does not count), and it must not be anonymous. It reads the host's own
+/// endpoint table once in Development and once in Production, and asks the host's policy provider what each policy
+/// requires, so a policy is judged by what it is, not by its name.
+/// </summary>
+public sealed class AcrossTenantsRequiresTheCrossTenantRole : IArchitectureRule
+{
+    public string Description => $"Every endpoint mapped with AcrossTenants() requires the role {CrossTenantRole.Name} (CrossTenantRole.Name).";
+
+    public IEnumerable<string> Violations(ArchitectureModel model)
+    {
+        Ensure.That(model).IsNotNull();
+
+        return [.. Unguarded(Environments.Development)
+            .Concat(Unguarded(Environments.Production))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+    }
+
+    private static List<string> Unguarded(string environment)
+    {
+        using var host = new MappedHost(environment);
+        var policies = host.Services.GetRequiredService<IAuthorizationPolicyProvider>();
+        return [.. host.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.Metadata.GetMetadata<ReadsAcrossTenants>() is not null)
+            .Where(endpoint => !RequiresTheRole(endpoint, policies))
+            .Select(endpoint => $"{Name(endpoint)} reads across tenants (AcrossTenants()), but its authorization does not require the role {CrossTenantRole.Name} (CrossTenantRole.Name). Name a policy that does, such as <Module>PolicyNames.ReadAllTenants.")];
+    }
+
+    private static bool RequiresTheRole(RouteEndpoint endpoint, IAuthorizationPolicyProvider policies)
+    {
+        if (endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+        {
+            return false;
+        }
+
+        var policy = AuthorizationPolicy.CombineAsync(
+            policies,
+            endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>(),
+            endpoint.Metadata.GetOrderedMetadata<AuthorizationPolicy>()).GetAwaiter().GetResult();
+
+        return policy is not null && policy.Requirements
+            .OfType<RolesAuthorizationRequirement>()
+            .Any(requirement => requirement.AllowedRoles.All(role => role == CrossTenantRole.Name));
+    }
+
+    private static string Name(RouteEndpoint endpoint)
+    {
+        var methods = endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? [];
+        var route = "/" + endpoint.RoutePattern.RawText?.TrimStart('/');
+        return methods.Count == 0 ? route : $"{string.Join(',', methods)} {route}";
+    }
+
+    /// <summary>
+    /// The host with every endpoint mapped but nothing started: no hosted service runs, so the configuration Aspire
+    /// would provide only has to be present, never reachable.
+    /// </summary>
+    private sealed class MappedHost(string environment) : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment(environment);
+            builder.UseSetting("ConnectionStrings:database", "Host=localhost;Database=unused");
+            builder.UseSetting("ConnectionStrings:messaging", "amqp://localhost");
+            builder.UseSetting("Authentication:Authority", "http://localhost/realms/unused");
+            builder.ConfigureServices(services => services.RemoveAll<IHostedService>());
+        }
+    }
+}

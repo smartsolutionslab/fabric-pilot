@@ -1,4 +1,5 @@
 using FabricPilot.BuildingBlocks.Modules;
+using FabricPilot.BuildingBlocks.Tenancy;
 using FabricPilot.Modules.Notifications.Application;
 using Microsoft.AspNetCore.Authorization;
 
@@ -15,5 +16,7 @@ public sealed class NotificationsPolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(NotificationsPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        policies.AddPolicy(NotificationsPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(NotificationsPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

@@ -1,4 +1,5 @@
 using FabricPilot.BuildingBlocks.Modules;
+using FabricPilot.BuildingBlocks.Tenancy;
 using FabricPilot.Modules.Documents.Application;
 using Microsoft.AspNetCore.Authorization;
 
@@ -15,5 +16,7 @@ public sealed class DocumentsPolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(DocumentsPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        policies.AddPolicy(DocumentsPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(DocumentsPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }
