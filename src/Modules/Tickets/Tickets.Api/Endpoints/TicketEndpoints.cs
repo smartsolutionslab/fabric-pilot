@@ -1,5 +1,6 @@
 using FabricPilot.BuildingBlocks.Api;
 using FabricPilot.BuildingBlocks.Messaging;
+using FabricPilot.Modules.Tickets.Application;
 using FabricPilot.Modules.Tickets.Application.Commands.RaiseTicket;
 using FabricPilot.Modules.Tickets.Application.DTOs;
 using FabricPilot.Modules.Tickets.Application.Queries.DownloadAttachment;
@@ -14,7 +15,10 @@ using Microsoft.AspNetCore.Routing;
 
 namespace FabricPilot.Modules.Tickets.Api.Endpoints;
 
-/// <summary>The caller's tenant's tickets: raising one with its files, listing them, reading one and downloading its files.</summary>
+/// <summary>
+/// The caller's tenant's tickets: raising one with its files, listing them, reading one and downloading its files; and,
+/// for staff, every tenant's tickets, read only.
+/// </summary>
 public sealed class TicketEndpoints : IEndpoint
 {
     /// <summary>Every attachment at its largest, and room for the subject, the description and the form's own framing.</summary>
@@ -33,15 +37,24 @@ public sealed class TicketEndpoints : IEndpoint
         tickets.MapPost(string.Empty, RaiseAsync)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(LargestRequest))
-            .WithFormOptions(multipartBodyLengthLimit: LargestRequest);
-        tickets.MapGet(string.Empty, ListAsync);
+            .WithFormOptions(multipartBodyLengthLimit: LargestRequest)
+            .RequireAuthorization(TicketsPolicyNames.RaiseAndRead);
+        tickets.MapGet(string.Empty, ListAsync)
+            .RequireAuthorization(TicketsPolicyNames.RaiseAndRead);
+
+        // The same list, every tenant's rows: staff, who belong to no tenant, read it and write nothing.
+        tickets.MapGet("/all-tenants", ListAsync)
+            .RequireAuthorization(TicketsPolicyNames.ReadAllTenants)
+            .AcrossTenants();
         tickets.MapGet("/{ticketId:guid}", async (Guid ticketId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
-            (await dispatcher.QueryAsync(new GetTicket(ticketId), cancellationToken)).ToHttpResult());
+            (await dispatcher.QueryAsync(new GetTicket(ticketId), cancellationToken)).ToHttpResult())
+            .RequireAuthorization(TicketsPolicyNames.RaiseAndRead);
         tickets.MapGet("/{ticketId:guid}/attachments/{attachmentId:guid}", async (Guid ticketId, Guid attachmentId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
             (await dispatcher.QueryAsync(new DownloadAttachment(ticketId, attachmentId), cancellationToken))
                 // Always a download, never shown inline: an uploaded page must not run in the portal's origin.
                 .ToHttpResult(download => TypedResults.Stream(download.Content, "application/octet-stream", download.FileName)))
-            .Produces<Stream>(StatusCodes.Status200OK, "application/octet-stream");
+            .Produces<Stream>(StatusCodes.Status200OK, "application/octet-stream")
+            .RequireAuthorization(TicketsPolicyNames.RaiseAndRead);
     }
 
     /// <summary>Newest first unless the caller names a field; a named field sorts descending unless the caller says otherwise.</summary>
