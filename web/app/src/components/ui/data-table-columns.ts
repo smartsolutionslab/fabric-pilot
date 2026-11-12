@@ -1,7 +1,7 @@
-import { createColumnHelper, type RowData, tableFeatures } from '@tanstack/react-table';
+import { createColumnHelper, type RowData, rowPaginationFeature, tableFeatures } from '@tanstack/react-table';
 
-/** Core features only; register sorting, filtering or paging here when a screen needs them. */
-export const features = tableFeatures({});
+/** Register sorting or filtering here when a screen needs them. Paging is the server's: DataTable never slices rows. */
+export const features = tableFeatures({ rowPaginationFeature });
 
 export type Features = typeof features;
 
