@@ -58,6 +58,20 @@ public class PdfSharpInvoiceRendererTests
         text.ShouldContain("Serwis drukarek Łódź – Żółć");
     }
 
+    [Fact]
+    public void The_widest_invoice_number_of_the_longest_length_fits_on_the_page_whole()
+    {
+        var number = new string('W', Invoice.MaximumNumberLength);
+        var invoice = Invoice.Issue(InvoiceId.New(), number, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), "EUR", [Line("Toner", 1, 10m)]).Value;
+
+        var pdf = new PdfSharpInvoiceRenderer().Render(invoice);
+
+        Text(pdf).ShouldContain($"Invoice {number}");
+        using var document = PdfDocument.Open(pdf);
+        var page = document.GetPage(1);
+        page.Letters.ShouldAllBe(letter => letter.BoundingBox.Left >= 0 && letter.BoundingBox.Right <= page.Width);
+    }
+
     private static InvoiceLine Line(string description, int quantity, decimal unitPrice) =>
         InvoiceLine.Describe(description, quantity, unitPrice).Value;
 

@@ -36,6 +36,30 @@ public class InvoiceTests
     }
 
     [Fact]
+    public void The_same_line_given_twice_is_charged_twice_as_two_lines_of_the_invoices_own()
+    {
+        var toner = Line("Toner", 2, 12.50m);
+
+        var invoice = Invoice.Issue(InvoiceId.New(), "2026-0042", IssuedOn, DueOn, "EUR", [toner, toner]).Value;
+
+        invoice.Lines.Select(line => line.Position).ShouldBe([1, 2]);
+        invoice.Lines[0].ShouldNotBeSameAs(invoice.Lines[1]);
+        invoice.Lines.ShouldAllBe(line => !ReferenceEquals(line, toner));
+        invoice.Total.ShouldBe(50.00m);
+    }
+
+    [Fact]
+    public void Issuing_another_invoice_with_the_same_line_leaves_the_first_invoice_as_it_was()
+    {
+        var toner = Line("Toner", 2, 12.50m);
+        var first = Invoice.Issue(InvoiceId.New(), "2026-0042", IssuedOn, DueOn, "EUR", [Line("Paper", 1, 5m), toner]).Value;
+
+        Invoice.Issue(InvoiceId.New(), "2026-0043", IssuedOn, DueOn, "EUR", [toner]);
+
+        first.Lines.Select(line => (line.Position, line.Description)).ShouldBe([(1, "Paper"), (2, "Toner")]);
+    }
+
+    [Fact]
     public void An_invoice_may_be_due_on_the_day_it_is_issued()
     {
         Invoice.Issue(InvoiceId.New(), "2026-0042", IssuedOn, IssuedOn, "EUR", [Line("Toner", 1, 12.50m)]).IsSuccess.ShouldBeTrue();

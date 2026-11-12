@@ -61,6 +61,25 @@ public class BillingInvoicesTests(AspireFixture aspire)
     }
 
     [Fact]
+    public async Task An_invoice_issued_with_the_same_line_twice_is_stored_and_read_back_with_both_lines_and_their_total()
+    {
+        var toner = InvoiceLine.Describe("Toner", 2, 12.50m).Value;
+        var invoice = Invoice.Issue(InvoiceId.New(), Number(), new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), "EUR", [toner, toner]).Value;
+        await InvoicesTable.RecordAsync(aspire, "tenant-a", [invoice], TestContext.Current.CancellationToken);
+        using var client = await aspire.CreateHostClientAsync("developer");
+
+        var listed = (await Json(client, Invoices))["items"]!.AsArray().Single(item => item!["id"]!.GetValue<Guid>() == invoice.Id.Value)!;
+        using var response = await client.GetAsync(Pdf(invoice.Id.Value), TestContext.Current.CancellationToken);
+
+        listed["total"]!.GetValue<decimal>().ShouldBe(50.00m);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var pdf = PdfDocument.Open(await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+        var text = string.Join(' ', pdf.GetPages().SelectMany(page => page.GetWords()).Select(word => word.Text));
+        text.ShouldContain("Toner 2 12.50 25.00 Toner 2 12.50 25.00");
+        text.ShouldContain("Total 50.00 EUR");
+    }
+
+    [Fact]
     public async Task Another_tenants_invoice_is_not_found_rather_than_forbidden()
     {
         var otherTenants = Issued(Number(), ("Hosting", 1, 300m));
