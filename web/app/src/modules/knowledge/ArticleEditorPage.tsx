@@ -57,9 +57,9 @@ export function ArticleEditorPage() {
   const onSubmit = handleSubmit(async (content) => {
     try {
       if (articleId) {
-        await edit({ articleId, body: content }).unwrap();
+        await edit({ articleId, articleContent: content }).unwrap();
       } else {
-        await write({ body: content }).unwrap();
+        await write({ articleContent: content }).unwrap();
       }
       await navigate('/knowledge/manage');
     } catch (failure) {
@@ -104,7 +104,12 @@ export function ArticleEditorPage() {
       <form noValidate onSubmit={(event) => void onSubmit(event)} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="title">Title</Label>
-          <Input id="title" aria-invalid={Boolean(errors.title)} aria-describedby={describedBy('title')} {...register('title')} />
+          <Input
+            id="title"
+            aria-invalid={Boolean(errors.title)}
+            aria-describedby={describedBy('title')}
+            {...register('title')}
+          />
           {fieldError('title')}
         </div>
         <div className="flex flex-col gap-2">
