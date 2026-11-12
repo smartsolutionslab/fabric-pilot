@@ -34,6 +34,12 @@ public sealed class Article : AggregateRoot<ArticleId>
     /// <summary>When it was published; null while it is a draft.</summary>
     public DateTimeOffset? PublishedAt { get; private set; }
 
+    /// <summary>
+    /// Published text the search index does not hold yet: set by publishing or by editing a published article, in the
+    /// same save, and cleared once its chunks are indexed. Publishing it again indexes it.
+    /// </summary>
+    public bool NeedsIndexing { get; private set; }
+
     public static Result<Article, ArticleError> Write(ArticleId id, string title, string body, DateTimeOffset writtenAt)
     {
         Ensure.That(id).IsNotNull();
@@ -58,6 +64,7 @@ public sealed class Article : AggregateRoot<ArticleId>
 
         (Title, Body) = checkedText.Value;
         ChangedAt = editedAt;
+        NeedsIndexing = State == ArticleState.Published;
         return Success(Unit.Value);
     }
 
@@ -71,9 +78,13 @@ public sealed class Article : AggregateRoot<ArticleId>
         State = ArticleState.Published;
         PublishedAt = publishedAt;
         ChangedAt = publishedAt;
+        NeedsIndexing = true;
         Raise(new ArticlePublished(Id));
         return Success(Unit.Value);
     }
+
+    /// <summary>The search index holds the article as it now stands.</summary>
+    public void MarkIndexed() => NeedsIndexing = false;
 
     private static Result<(string Title, string Body), ArticleError> Checked(string title, string body)
     {

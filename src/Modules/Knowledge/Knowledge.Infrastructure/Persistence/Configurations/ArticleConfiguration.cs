@@ -23,6 +23,7 @@ public sealed class ArticleConfiguration : IEntityTypeConfiguration<Article>
         builder.Property(article => article.State).HasColumnName("state").HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(article => article.ChangedAt).HasColumnName("changed_at").IsRequired();
         builder.Property(article => article.PublishedAt).HasColumnName("published_at");
+        builder.Property(article => article.NeedsIndexing).HasColumnName("needs_indexing").IsRequired();
         builder.HasIndex(article => new { article.State, article.ChangedAt });
         builder.Ignore(article => article.DomainEvents);
     }

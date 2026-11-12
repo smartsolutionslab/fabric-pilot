@@ -16,7 +16,7 @@ partial class KnowledgeDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261112192701_WriteArticles";
+    public override string LastMigrationId => "20261112212508_MarkArticlesForIndexing";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -43,6 +43,10 @@ partial class KnowledgeDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTimeOffset>("ChangedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("changed_at");
+
+                b.Property<bool>("NeedsIndexing")
+                    .HasColumnType("boolean")
+                    .HasColumnName("needs_indexing");
 
                 b.Property<DateTimeOffset?>("PublishedAt")
                     .HasColumnType("timestamp with time zone")

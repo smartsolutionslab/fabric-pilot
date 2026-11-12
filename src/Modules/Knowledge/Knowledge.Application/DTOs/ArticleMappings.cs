@@ -8,7 +8,7 @@ public static class ArticleMappings
     public static ArticleDto ToArticleDto(this Article article)
     {
         Ensure.That(article).IsNotNull();
-        return new ArticleDto(article.Id.Value, article.Title, article.Body, article.State.ToString(), article.ChangedAt, article.PublishedAt);
+        return new ArticleDto(article.Id.Value, article.Title, article.Body, article.State.ToString(), article.ChangedAt, article.PublishedAt, article.NeedsIndexing);
     }
 
     /// <summary>For an EF <c>Select</c>: the text is never read for a list.</summary>
