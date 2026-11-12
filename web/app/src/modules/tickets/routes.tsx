@@ -1,4 +1,4 @@
 import type { ModuleRoute } from '@/modules';
-import { TicketsPage } from './TicketsPage';
+import { TicketsRoutes } from './TicketsRoutes';
 
-export const route: ModuleRoute = { path: 'tickets', title: 'Tickets', element: <TicketsPage /> };
+export const route: ModuleRoute = { path: 'tickets', title: 'Tickets', element: <TicketsRoutes /> };

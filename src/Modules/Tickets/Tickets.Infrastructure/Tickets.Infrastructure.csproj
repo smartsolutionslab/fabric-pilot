@@ -1,2 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Blob storage is hand-written in this repository until the catalog offers it (software-fabric#602). -->
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Azure.Identity" />
+  </ItemGroup>
+
 </Project>
