@@ -670,7 +670,8 @@
           "body",
           "state",
           "changedAt",
-          "publishedAt"
+          "publishedAt",
+          "needsIndexing"
         ],
         "type": "object",
         "properties": {
@@ -697,6 +698,9 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "needsIndexing": {
+            "type": "boolean"
           }
         }
       },

@@ -47,7 +47,8 @@ export function ArticleEditorPage() {
 
   useEffect(() => {
     if (article) {
-      reset({ title: article.title, body: article.body });
+      // A refetch (after publishing, say) must not overwrite what staff are typing.
+      reset({ title: article.title, body: article.body }, { keepDirtyValues: true });
     }
   }, [article, reset]);
 
@@ -159,6 +160,14 @@ export function ArticleEditorPage() {
             </Button>
           ) : null}
         </div>
+        {article?.state === 'Published' && article.needsIndexing ? (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-destructive">Not yet searchable: indexing it failed.</p>
+            <Button type="button" variant="outline" disabled={isPublishing} onClick={() => void onPublish()}>
+              Index again
+            </Button>
+          </div>
+        ) : null}
         {article?.state === 'Draft' && isDirty ? (
           <p id="publish-hint" className="text-sm text-muted-foreground">
             Save your changes before publishing.
