@@ -9,7 +9,7 @@ namespace FabricPilot.Modules.Knowledge.Api;
 public sealed class KnowledgeModule : IModule
 {
     public void AddServices(IServiceCollection services, IConfiguration configuration) =>
-        services.AddModuleInfrastructure<KnowledgeModule>(configuration);
+        services.AddModuleInfrastructure<KnowledgeModule>(configuration).AddKnowledgeStorage();
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup("/knowledge").MapModuleEndpoints<KnowledgeModule>();
