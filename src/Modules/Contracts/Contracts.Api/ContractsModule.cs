@@ -9,7 +9,7 @@ namespace FabricPilot.Modules.Contracts.Api;
 public sealed class ContractsModule : IModule
 {
     public void AddServices(IServiceCollection services, IConfiguration configuration) =>
-        services.AddModuleInfrastructure<ContractsModule>(configuration);
+        services.AddModuleInfrastructure<ContractsModule>(configuration).AddContractsStorage();
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup("/contracts").MapModuleEndpoints<ContractsModule>();
