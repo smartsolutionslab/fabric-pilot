@@ -1,6 +1,7 @@
 using FabricPilot.BuildingBlocks.Api;
 using FabricPilot.BuildingBlocks.Messaging;
 using FabricPilot.Modules.Tickets.Application.Commands.RaiseTicket;
+using FabricPilot.Modules.Tickets.Application.DTOs;
 using FabricPilot.Modules.Tickets.Application.Queries.DownloadAttachment;
 using FabricPilot.Modules.Tickets.Application.Queries.GetTicket;
 using FabricPilot.Modules.Tickets.Application.Queries.ListTickets;
@@ -33,8 +34,7 @@ public sealed class TicketEndpoints : IEndpoint
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(LargestRequest))
             .WithFormOptions(multipartBodyLengthLimit: LargestRequest);
-        tickets.MapGet(string.Empty, async (Page? page, PageSize? pageSize, IDispatcher dispatcher, CancellationToken cancellationToken) =>
-            (await dispatcher.QueryAsync(new ListTickets(page ?? Page.First, pageSize ?? PageSize.Default), cancellationToken)).ToHttpResult());
+        tickets.MapGet(string.Empty, ListAsync);
         tickets.MapGet("/{ticketId:guid}", async (Guid ticketId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
             (await dispatcher.QueryAsync(new GetTicket(ticketId), cancellationToken)).ToHttpResult());
         tickets.MapGet("/{ticketId:guid}/attachments/{attachmentId:guid}", async (Guid ticketId, Guid attachmentId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
@@ -42,6 +42,22 @@ public sealed class TicketEndpoints : IEndpoint
                 // Always a download, never shown inline: an uploaded page must not run in the portal's origin.
                 .ToHttpResult(download => TypedResults.Stream(download.Content, "application/octet-stream", download.FileName)))
             .Produces<Stream>(StatusCodes.Status200OK, "application/octet-stream");
+    }
+
+    /// <summary>Newest first unless the caller names a field; a named field sorts descending unless the caller says otherwise.</summary>
+    private static async Task<Results<Ok<PagedResult<TicketSummaryDto>>, ProblemHttpResult>> ListAsync(
+        Page? page,
+        PageSize? pageSize,
+        TicketSortField? sortBy,
+        SortDirection? sortDirection,
+        IDispatcher dispatcher,
+        CancellationToken cancellationToken)
+    {
+        var sorting = new Sorting<TicketSortField>(
+            sortBy ?? ListTickets.NewestFirst.Field,
+            sortDirection ?? ListTickets.NewestFirst.Direction);
+        var listTickets = new ListTickets(page ?? Page.First, pageSize ?? PageSize.Default, sorting);
+        return (await dispatcher.QueryAsync(listTickets, cancellationToken)).ToHttpResult();
     }
 
     private static async Task<Results<Created<Guid>, ProblemHttpResult>> RaiseAsync(

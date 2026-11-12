@@ -1,3 +1,5 @@
+using FabricPilot.Modules.Tickets.Application.DTOs;
+using FabricPilot.Modules.Tickets.Application.Queries.ListTickets;
 using FabricPilot.Modules.Tickets.Domain.Tickets;
 
 namespace FabricPilot.Modules.Tickets.Application;
@@ -10,8 +12,8 @@ public interface ITicketStore
     /// <summary>The ticket with its attachments as it is stored, for a query: nothing that changes it is saved.</summary>
     Task<Option<Ticket>> ReadAsync(TicketId id, CancellationToken cancellationToken);
 
-    /// <summary>One page of tickets, newest first, for a query.</summary>
-    Task<PagedResult<Ticket>> ListAsync(Page page, PageSize pageSize, CancellationToken cancellationToken);
+    /// <summary>One page of ticket summaries in the order asked for, projected in the database.</summary>
+    Task<PagedResult<TicketSummaryDto>> ListAsync(Sorting<TicketSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken);
 
     Task SaveAsync(CancellationToken cancellationToken);
 }
