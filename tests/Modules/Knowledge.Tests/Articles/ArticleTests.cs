@@ -35,13 +35,13 @@ public class ArticleTests
         var result = Article.Write(ArticleId.New(), title, "Body", WrittenAt);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBeOfType<InvalidTitle>().Code.ShouldBe("knowledge.invalid-title");
+        result.Error.Value.ShouldBeOfType<InvalidTitle>().Code.ShouldBe("knowledge.invalid-title");
     }
 
     [Fact]
     public void A_title_longer_than_the_maximum_is_refused_and_one_at_the_maximum_is_not()
     {
-        Article.Write(ArticleId.New(), new string('t', Article.MaximumTitleLength + 1), "Body", WrittenAt).Error.ShouldBeOfType<InvalidTitle>();
+        Article.Write(ArticleId.New(), new string('t', Article.MaximumTitleLength + 1), "Body", WrittenAt).Error.Value.ShouldBeOfType<InvalidTitle>();
         Article.Write(ArticleId.New(), new string('t', Article.MaximumTitleLength), "Body", WrittenAt).IsSuccess.ShouldBeTrue();
     }
 
@@ -53,13 +53,13 @@ public class ArticleTests
         var result = Article.Write(ArticleId.New(), "Title", body, WrittenAt);
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBeOfType<InvalidBody>().Code.ShouldBe("knowledge.invalid-body");
+        result.Error.Value.ShouldBeOfType<InvalidBody>().Code.ShouldBe("knowledge.invalid-body");
     }
 
     [Fact]
     public void A_body_longer_than_the_maximum_is_refused_and_one_at_the_maximum_is_not()
     {
-        Article.Write(ArticleId.New(), "Title", new string('b', Article.MaximumBodyLength + 1), WrittenAt).Error.ShouldBeOfType<InvalidBody>();
+        Article.Write(ArticleId.New(), "Title", new string('b', Article.MaximumBodyLength + 1), WrittenAt).Error.Value.ShouldBeOfType<InvalidBody>();
         Article.Write(ArticleId.New(), "Title", new string('b', Article.MaximumBodyLength), WrittenAt).IsSuccess.ShouldBeTrue();
     }
 
@@ -84,7 +84,7 @@ public class ArticleTests
 
         var result = article.Edit("New title", " ", Later);
 
-        result.Error.ShouldBeOfType<InvalidBody>();
+        result.Error.Value.ShouldBeOfType<InvalidBody>();
         article.Title.ShouldBe("Resetting a password");
         article.Body.ShouldBe("Open the sign-in page.");
         article.ChangedAt.ShouldBe(WrittenAt);
@@ -124,7 +124,7 @@ public class ArticleTests
 
         var result = article.Publish(Later.AddHours(1));
 
-        result.Error.ShouldBeOfType<ArticleAlreadyPublished>().Code.ShouldBe("knowledge.article-already-published");
+        result.Error.Value.ShouldBeOfType<ArticleAlreadyPublished>().Code.ShouldBe("knowledge.article-already-published");
         article.PublishedAt.ShouldBe(Later);
         article.DomainEvents.Count.ShouldBe(1);
     }

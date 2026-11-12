@@ -5,6 +5,7 @@ using FabricPilot.Modules.Knowledge.Application.Queries.GetPublishedArticle;
 using FabricPilot.Modules.Knowledge.Application.Queries.ListArticles;
 using FabricPilot.Modules.Knowledge.Application.Queries.SearchArticles;
 using FabricPilot.Modules.Knowledge.Domain.Articles;
+using SortDirection = FabricPilot.Kernel.SortDirection;
 
 namespace FabricPilot.Modules.Knowledge.Tests.Queries;
 
