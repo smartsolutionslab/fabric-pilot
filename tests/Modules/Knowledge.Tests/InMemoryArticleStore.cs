@@ -20,8 +20,14 @@ internal sealed class InMemoryArticleStore : IArticleStore
     public Task<PagedResult<ArticleSummaryDto>> ListAsync(Sorting<ArticleSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken) =>
         Task.FromResult(PageOf(Saved.AsQueryable(), sorting, page, pageSize));
 
-    public Task<PagedResult<ArticleSummaryDto>> SearchPublishedAsync(string search, Sorting<ArticleSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken) =>
-        Task.FromResult(PageOf(Saved.AsQueryable().PublishedMatching(search), sorting, page, pageSize));
+    /// <summary>The database store matches with ILIKE; in memory, the same thing is an ordinal comparison without case.</summary>
+    public Task<PagedResult<ArticleSummaryDto>> SearchPublishedAsync(string search, Sorting<ArticleSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken)
+    {
+        var term = search.Trim();
+        var matching = Saved.AsQueryable().Published()
+            .Where(article => term.Length == 0 || article.Title.Contains(term, StringComparison.OrdinalIgnoreCase) || article.Body.Contains(term, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(PageOf(matching, sorting, page, pageSize));
+    }
 
     public void Commit()
     {
