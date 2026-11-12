@@ -70,6 +70,18 @@ public class TicketAttachmentsTests(AspireFixture aspire)
     }
 
     [Fact]
+    public async Task A_ticket_with_the_most_attachments_each_of_the_largest_size_is_raised()
+    {
+        using var client = await aspire.CreateHostClientAsync("developer");
+        var files = Enumerable.Range(1, 5).Select(number => ($"part{number}.bin", "application/octet-stream", new byte[SizeLimit])).ToArray();
+
+        using var form = Form($"Largest {Guid.CreateVersion7()}", "Normal", files);
+        using var response = await client.PostAsync(Tickets, form, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Another_tenants_ticket_and_its_attachments_are_not_found()
     {
         using var tenantA = await aspire.CreateHostClientAsync("developer");
