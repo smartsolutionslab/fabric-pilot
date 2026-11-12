@@ -67,7 +67,7 @@ public class ArticleCommandsTests
             [ArticleChunks.Key(article.Id, 0)] = "Resetting a password\n\nOpen the sign-in page.\n\nChoose Forgot password.",
         });
         unitOfWork.Published.ShouldHaveSingleItem().ShouldBe(new ArticlePublishedV1(id, "Resetting a password"));
-        unitOfWork.Commits.ShouldBe(2);
+        unitOfWork.Commits.ShouldBe(3);
     }
 
     [Fact]
@@ -206,6 +206,56 @@ public class ArticleCommandsTests
         locks.Locked.ShouldBe([new ArticleId(id), new ArticleId(id)]);
         locks.Held.ShouldBe(0);
         index.WritesOutsideTheLock.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task When_indexing_fails_after_publishing_publishing_again_indexes_the_article_without_announcing_it_twice()
+    {
+        var id = (await Write("Title", "Body")).Value;
+        index.Unavailable = true;
+
+        await Should.ThrowAsync<HttpRequestException>(() => Publish(id));
+
+        var article = articles.Saved.Single();
+        article.State.ShouldBe(ArticleState.Published);
+        article.NeedsIndexing.ShouldBeTrue();
+        index.Unavailable = false;
+
+        var retried = await Publish(id);
+
+        retried.IsSuccess.ShouldBeTrue();
+        article.NeedsIndexing.ShouldBeFalse();
+        index.Chunks.Keys.ShouldBe([ArticleChunks.Key(article.Id, 0)]);
+        unitOfWork.Published.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task When_indexing_fails_after_an_edit_publishing_again_indexes_the_new_text()
+    {
+        var id = (await Write("Title", "Old text.")).Value;
+        await Publish(id);
+        index.Unavailable = true;
+
+        await Should.ThrowAsync<HttpRequestException>(() => Edit(id, "Title", "New text."));
+        index.Unavailable = false;
+        var retried = await Publish(id);
+
+        retried.IsSuccess.ShouldBeTrue();
+        var article = articles.Saved.Single();
+        index.Chunks[ArticleChunks.Key(article.Id, 0)].ShouldBe("Title\n\nNew text.");
+        article.NeedsIndexing.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task A_published_article_that_was_indexed_is_marked_as_indexed()
+    {
+        var id = (await Write("Title", "Body")).Value;
+
+        await Publish(id);
+        await Edit(id, "Title", "New body");
+
+        articles.Saved.Single().NeedsIndexing.ShouldBeFalse();
+        unitOfWork.Commits.ShouldBe(5);
     }
 
     private Task<Result<Guid, ApiError>> Write(string title, string body) =>

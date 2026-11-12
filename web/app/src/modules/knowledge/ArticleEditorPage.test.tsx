@@ -29,6 +29,7 @@ const draft = {
   state: 'Draft',
   changedAt: '2026-11-12T10:00:00+00:00',
   publishedAt: null as string | null,
+  needsIndexing: false,
 };
 
 function loaded(article: typeof draft | undefined) {
@@ -148,6 +149,35 @@ test('a published article offers no publishing again', async () => {
 
   expect(await screen.findByText('Published')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
+});
+
+test('a published article whose indexing failed offers indexing it again', async () => {
+  const user = userEvent.setup();
+  loaded({ ...draft, state: 'Published', publishedAt: '2026-11-12T11:00:00+00:00', needsIndexing: true });
+  renderEditor('/knowledge/manage/d1');
+
+  expect(await screen.findByText('Not yet searchable: indexing it failed.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Index again' }));
+
+  expect(publish).toHaveBeenCalledWith({ articleId: 'd1' });
+});
+
+test('an article fetched again keeps what staff have typed', async () => {
+  const user = userEvent.setup();
+  const { rerender } = renderEditor('/knowledge/manage/d1');
+  await user.type(await screen.findByLabelText('Text'), ' More.');
+
+  loaded({ ...draft, state: 'Published', publishedAt: '2026-11-12T11:00:00+00:00' });
+  rerender(
+    <MemoryRouter initialEntries={['/knowledge/manage/d1']}>
+      <Routes>
+        <Route path="/knowledge/manage/:articleId" element={<ArticleEditorPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByText('Published')).toBeInTheDocument();
+  expect(screen.getByLabelText('Text')).toHaveValue('Not ready yet. More.');
 });
 
 test('a draft with unsaved changes cannot be published until they are saved', async () => {

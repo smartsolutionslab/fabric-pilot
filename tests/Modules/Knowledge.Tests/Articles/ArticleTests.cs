@@ -129,5 +129,32 @@ public class ArticleTests
         article.DomainEvents.Count.ShouldBe(1);
     }
 
+    [Fact]
+    public void A_draft_needs_no_indexing_and_publishing_marks_it_until_it_is_indexed()
+    {
+        var article = Draft();
+        article.NeedsIndexing.ShouldBeFalse();
+
+        article.Publish(Later);
+        article.NeedsIndexing.ShouldBeTrue();
+
+        article.MarkIndexed();
+        article.NeedsIndexing.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Editing_a_published_article_marks_it_for_indexing_and_editing_a_draft_does_not()
+    {
+        var draft = Draft();
+        draft.Edit("New title", "New body", Later);
+        draft.NeedsIndexing.ShouldBeFalse();
+
+        var published = Draft();
+        published.Publish(Later);
+        published.MarkIndexed();
+        published.Edit("New title", "New body", Later.AddHours(1));
+        published.NeedsIndexing.ShouldBeTrue();
+    }
+
     private static Article Draft() => Article.Write(ArticleId.New(), "Resetting a password", "Open the sign-in page.", WrittenAt).Value;
 }

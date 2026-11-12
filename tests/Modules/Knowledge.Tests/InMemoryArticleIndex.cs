@@ -9,6 +9,9 @@ internal sealed class InMemoryArticleIndex(InMemoryArticleLocks locks) : IArticl
 
     public int WritesOutsideTheLock { get; private set; }
 
+    /// <summary>Every write fails, as when the embeddings provider cannot be reached.</summary>
+    public bool Unavailable { get; set; }
+
     public Task IndexAsync(string key, string text, CancellationToken cancellationToken)
     {
         Count();
@@ -25,6 +28,11 @@ internal sealed class InMemoryArticleIndex(InMemoryArticleLocks locks) : IArticl
 
     private void Count()
     {
+        if (Unavailable)
+        {
+            throw new HttpRequestException("The embeddings provider cannot be reached.");
+        }
+
         if (locks.Held == 0)
         {
             WritesOutsideTheLock++;
