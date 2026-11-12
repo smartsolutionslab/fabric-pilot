@@ -323,7 +323,11 @@
         }
       },
       "ContractSortField": {
-        "type": "integer"
+        "enum": [
+          "EndsOn",
+          "StartsOn",
+          "Product"
+        ]
       },
       "ContractSummaryDto": {
         "required": [
@@ -480,7 +484,10 @@
         }
       },
       "SortDirection": {
-        "type": "integer"
+        "enum": [
+          "Ascending",
+          "Descending"
+        ]
       },
       "Stream": {
         "type": "string",
@@ -523,7 +530,10 @@
         }
       },
       "TicketSortField": {
-        "type": "integer"
+        "enum": [
+          "RaisedAt",
+          "Subject"
+        ]
       },
       "TicketSummaryDto": {
         "required": [
