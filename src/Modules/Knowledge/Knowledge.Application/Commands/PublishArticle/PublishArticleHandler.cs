@@ -18,7 +18,13 @@ public sealed class PublishArticleHandler(IArticleStore articles, IArticleIndex 
         Ensure.That(command).IsNotNull();
 
         var id = new ArticleId(command.ArticleId);
-        await using var articleLock = await locks.AcquireAsync(id, cancellationToken);
+        var acquired = await locks.TryAcquireAsync(id, cancellationToken);
+        if (!acquired.HasValue)
+        {
+            return Failure(KnowledgeFailures.ArticleBeingChanged(command.ArticleId));
+        }
+
+        await using var articleLock = acquired.Value;
         var found = await articles.FindAsync(id, cancellationToken);
         if (!found.HasValue)
         {

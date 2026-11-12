@@ -15,4 +15,6 @@ public static class KnowledgeFailures
     };
 
     public static ApiError ArticleNotFound(Guid article) => new ArticleNotFound(article);
+
+    public static ApiError ArticleBeingChanged(Guid article) => new ArticleBeingChanged(article);
 }

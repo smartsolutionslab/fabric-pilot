@@ -17,7 +17,13 @@ public sealed class EditArticleHandler(IArticleStore articles, IArticleIndex ind
 
         var (articleId, title, body) = command;
         var id = new ArticleId(articleId);
-        await using var articleLock = await locks.AcquireAsync(id, cancellationToken);
+        var acquired = await locks.TryAcquireAsync(id, cancellationToken);
+        if (!acquired.HasValue)
+        {
+            return Failure(KnowledgeFailures.ArticleBeingChanged(articleId));
+        }
+
+        await using var articleLock = acquired.Value;
         var found = await articles.FindAsync(id, cancellationToken);
         if (!found.HasValue)
         {
