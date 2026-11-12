@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { readResponse, withFiles } from './baseApi';
+import { readResponse, requestBody, withFiles } from './baseApi';
 
 test('a body that carries files is sent as form data, one field per value and one part per file', () => {
   const screenshot = new File(['png'], 'screenshot.png', { type: 'image/png' });
@@ -37,4 +37,20 @@ test('a file is read as its bytes, unchanged', async () => {
   const body = await readResponse(new Response(bytes, { headers: { 'Content-Type': 'application/octet-stream' } }));
 
   expect(new Uint8Array(await (body as Blob).arrayBuffer())).toEqual(bytes);
+});
+
+test('a body for an endpoint the API takes as multipart form data is sent as form data, with or without files', () => {
+  const body = requestBody({ url: '/tickets/tickets', method: 'POST', body: { subject: 'No files', attachments: [] } });
+
+  expect(body).toBeInstanceOf(FormData);
+  const form = body as FormData;
+  expect(form.get('subject')).toBe('No files');
+  expect(form.getAll('attachments')).toEqual([]);
+});
+
+test('a body for an endpoint that takes JSON is left as it is', () => {
+  const body = { names: [] };
+
+  expect(requestBody({ url: '/tickets/tickets', method: 'PUT', body })).toBe(body);
+  expect(requestBody({ url: '/tickets/tickets/7', method: 'POST', body })).toBe(body);
 });
