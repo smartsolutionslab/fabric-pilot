@@ -28,7 +28,7 @@ const draft = {
   body: 'Not ready yet.',
   state: 'Draft',
   changedAt: '2026-11-12T10:00:00+00:00',
-  publishedAt: null,
+  publishedAt: null as string | null,
 };
 
 function loaded(article: typeof draft | undefined) {
@@ -78,7 +78,9 @@ test('a new article is written with its title and text, then the list is shown',
   await user.click(screen.getByRole('button', { name: 'Save' }));
 
   expect(await screen.findByRole('heading', { name: 'The article list' })).toBeInTheDocument();
-  expect(write).toHaveBeenCalledWith({ body: { title: 'Resetting a password', body: 'Open the sign-in page.' } });
+  expect(write).toHaveBeenCalledWith({
+    articleContent: { title: 'Resetting a password', body: 'Open the sign-in page.' },
+  });
   expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
 });
 
@@ -127,7 +129,7 @@ test('an existing article is edited in place', async () => {
   expect(useGetKnowledgeArticlesManageByArticleIdQuery).toHaveBeenCalledWith({ articleId: 'd1' });
   expect(edit).toHaveBeenCalledWith({
     articleId: 'd1',
-    body: { title: 'Printer drivers', body: 'Download them here.' },
+    articleContent: { title: 'Printer drivers', body: 'Download them here.' },
   });
 });
 
