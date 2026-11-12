@@ -1,4 +1,5 @@
 using System.Net;
+using FabricPilot.Modules.Tickets.Domain.Tickets;
 
 namespace FabricPilot.Modules.Tickets.Application;
 
@@ -6,7 +7,14 @@ namespace FabricPilot.Modules.Tickets.Application;
 public static class TicketsFailures
 {
     /// <summary>A ticket rule the request broke: the domain's code, answered as 422.</summary>
-    public static ApiError Rejected(DomainError error) => ApiError.From(error, HttpStatusCode.UnprocessableEntity);
+    public static ApiError From(TicketError error) => error switch
+    {
+        InvalidSubject invalidSubject => ApiError.From(invalidSubject, HttpStatusCode.UnprocessableEntity),
+        InvalidDescription invalidDescription => ApiError.From(invalidDescription, HttpStatusCode.UnprocessableEntity),
+        TooManyAttachments tooManyAttachments => ApiError.From(tooManyAttachments, HttpStatusCode.UnprocessableEntity),
+        AttachmentTooLarge attachmentTooLarge => ApiError.From(attachmentTooLarge, HttpStatusCode.UnprocessableEntity),
+        InvalidAttachmentName invalidAttachmentName => ApiError.From(invalidAttachmentName, HttpStatusCode.UnprocessableEntity),
+    };
 
     public static ApiError UnknownPriority(string priority) => new UnknownPriority(priority);
 

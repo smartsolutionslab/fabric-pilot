@@ -32,18 +32,18 @@ public sealed class Attachment : Entity<AttachmentId>
 
     public long Size { get; private set; }
 
-    internal static Result<Attachment, DomainError> From(AttachmentFile file, int position)
+    internal static Result<Attachment, TicketError> From(AttachmentFile file, int position)
     {
         // A browser may send the path the file came from (C:\fakepath\report.pdf); only its name is kept.
         var fileName = file.FileName[(file.FileName.LastIndexOfAny(['/', '\\']) + 1)..].Trim();
         if (fileName.Length == 0 || fileName.Length > MaximumFileNameLength)
         {
-            return Failure(TicketFailures.InvalidAttachmentName(MaximumFileNameLength));
+            return Failure(TicketErrors.InvalidAttachmentName(MaximumFileNameLength));
         }
 
         if (file.Size > MaximumSize)
         {
-            return Failure(TicketFailures.AttachmentTooLarge(fileName, MaximumSize));
+            return Failure(TicketErrors.AttachmentTooLarge(fileName, MaximumSize));
         }
 
         var contentType = string.IsNullOrWhiteSpace(file.ContentType) || file.ContentType.Length > MaximumContentTypeLength

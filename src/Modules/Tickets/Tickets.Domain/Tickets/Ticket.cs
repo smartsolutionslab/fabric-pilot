@@ -34,7 +34,7 @@ public sealed class Ticket : AggregateRoot<TicketId>
     /// <summary>In the order the customer attached them, however they were read back.</summary>
     public IReadOnlyList<Attachment> Attachments => [.. attachments.OrderBy(attachment => attachment.Position)];
 
-    public static Result<Ticket, DomainError> Raise(
+    public static Result<Ticket, TicketError> Raise(
         TicketId id,
         string subject,
         string description,
@@ -50,18 +50,18 @@ public sealed class Ticket : AggregateRoot<TicketId>
         subject = subject.Trim();
         if (subject.Length == 0 || subject.Length > MaximumSubjectLength)
         {
-            return Failure(TicketFailures.InvalidSubject(MaximumSubjectLength));
+            return Failure(TicketErrors.InvalidSubject(MaximumSubjectLength));
         }
 
         description = description.Trim();
         if (description.Length == 0 || description.Length > MaximumDescriptionLength)
         {
-            return Failure(TicketFailures.InvalidDescription(MaximumDescriptionLength));
+            return Failure(TicketErrors.InvalidDescription(MaximumDescriptionLength));
         }
 
         if (attachments.Count > MaximumAttachments)
         {
-            return Failure(TicketFailures.TooManyAttachments(MaximumAttachments));
+            return Failure(TicketErrors.TooManyAttachments(MaximumAttachments));
         }
 
         var ticket = new Ticket(id, subject, description, priority, raisedAt);

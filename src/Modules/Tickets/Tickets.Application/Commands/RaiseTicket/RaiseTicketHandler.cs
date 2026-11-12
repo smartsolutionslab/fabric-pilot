@@ -30,7 +30,7 @@ public sealed class RaiseTicketHandler(ITicketStore tickets, IBlobStore blobs, T
             time.GetUtcNow());
         if (raised.IsFailure)
         {
-            return Failure(TicketsFailures.Rejected(raised.Error));
+            return Failure(TicketsFailures.From(raised.Error));
         }
 
         var ticket = raised.Value;
