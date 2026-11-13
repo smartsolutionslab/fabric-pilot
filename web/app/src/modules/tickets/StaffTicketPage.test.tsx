@@ -46,6 +46,7 @@ function answering(suggestion: unknown) {
 beforeEach(() => {
   vi.mocked(useGetTicketsTicketsAllTenantsByTicketIdQuery).mockReturnValue({
     data: ticket,
+    currentData: ticket,
     isLoading: false,
     isError: false,
   } as never);
@@ -124,17 +125,13 @@ test('a source article opens beside the draft, so reading it keeps the edits', a
 
 test('opening another ticket leaves the previous ticket’s draft and sources behind', async () => {
   const otherId = '019a7b3c-5d2e-7f10-8a4b-3c2d1e0f9a8c';
-  vi.mocked(useGetTicketsTicketsAllTenantsByTicketIdQuery).mockImplementation(
-    (argument) =>
-      ({
-        data:
-          argument !== skipToken && argument.ticketId === otherId
-            ? { ...ticket, id: otherId, subject: 'Password reset' }
-            : ticket,
-        isLoading: false,
-        isError: false,
-      }) as never,
-  );
+  vi.mocked(useGetTicketsTicketsAllTenantsByTicketIdQuery).mockImplementation((argument) => {
+    const shown =
+      argument !== skipToken && argument.ticketId === otherId
+        ? { ...ticket, id: otherId, subject: 'Password reset' }
+        : ticket;
+    return { data: shown, currentData: shown, isLoading: false, isError: false } as never;
+  });
   const user = userEvent.setup();
   render(
     <MemoryRouter initialEntries={[`/tickets/${ticketId}`]}>
@@ -190,6 +187,7 @@ test('a suggestion that cannot be drafted says so', async () => {
 test('a ticket that cannot be loaded says so', () => {
   vi.mocked(useGetTicketsTicketsAllTenantsByTicketIdQuery).mockReturnValue({
     data: undefined,
+    currentData: undefined,
     isLoading: false,
     isError: true,
   } as never);
@@ -201,6 +199,7 @@ test('a ticket that cannot be loaded says so', () => {
 test('an address whose ticket id is not a GUID never reaches the API', () => {
   vi.mocked(useGetTicketsTicketsAllTenantsByTicketIdQuery).mockReturnValue({
     data: undefined,
+    currentData: undefined,
     isLoading: false,
     isError: false,
   } as never);
