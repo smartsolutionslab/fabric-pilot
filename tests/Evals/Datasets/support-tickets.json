@@ -1,0 +1,28 @@
+{
+  "tickets": [
+    {
+      "subject": "Printer shows error 42 since this morning",
+      "description": "Our office printer stopped printing and shows error 42. What can we do?",
+      "articles": [
+        { "title": "Printer error 42", "body": "Error 42 means the print spooler stopped. Open Services on the computer that shares the printer, restart the Print Spooler service, then print a test page. If the error comes back, reinstall the printer driver." }
+      ],
+      "expectedSources": [ "Printer error 42" ]
+    },
+    {
+      "subject": "VPN sign-in rejected",
+      "description": "Since today the VPN client rejects my sign-in, although I type the right password.",
+      "articles": [
+        { "title": "VPN sign-in fails", "body": "When the VPN client rejects a sign-in with a correct password, the password has usually expired. Reset it in the self-service portal, wait five minutes for it to reach the VPN, then sign in again." }
+      ],
+      "expectedSources": [ "VPN sign-in fails" ]
+    },
+    {
+      "subject": "Wrong billing address",
+      "description": "Please change the billing address on our invoices to our new office.",
+      "articles": [
+        { "title": "Printer error 42", "body": "Error 42 means the print spooler stopped. Open Services on the computer that shares the printer, restart the Print Spooler service, then print a test page." }
+      ],
+      "expectedSources": []
+    }
+  ]
+}
