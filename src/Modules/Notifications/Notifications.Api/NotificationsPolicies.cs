@@ -16,6 +16,8 @@ public sealed class NotificationsPolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(NotificationsPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        // customer-admin includes customer-user in the realm, so a tenant's admin holds this too.
+        policies.AddPolicy(NotificationsPolicyNames.ReadOwnNotices, policy => policy.RequireRole("customer-user"));
         policies.AddPolicy(NotificationsPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(NotificationsPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
     }

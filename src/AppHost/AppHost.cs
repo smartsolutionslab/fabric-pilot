@@ -24,10 +24,11 @@ var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26
     .WithBindMount("./realms", "/opt/keycloak/data/import", isReadOnly: true);
 keycloak.WithVolume(VolumeNameGenerator.Generate(keycloak, "data"), "/opt/keycloak/data");
 
+IResourceBuilder<ContainerResource>? mailpit = null;
 if (builder.ExecutionContext.IsRunMode)
 {
     // Keycloak's email (verification, reset password) lands in Mailpit, whose inbox is http://localhost:8025; the realm points SMTP at it.
-    var mailpit = builder.AddContainer("mailpit", "axllent/mailpit", "v1.33")
+    mailpit = builder.AddContainer("mailpit", "axllent/mailpit", "v1.33")
         .WithHttpEndpoint(port: 8025, targetPort: 8025)
         .WithEndpoint(targetPort: 1025, name: "smtp")
         .WithHttpHealthCheck("/livez");
@@ -67,6 +68,18 @@ var host = builder.AddProject<Projects.Host>("host")
     .WithEnvironment("AzureOpenAI__Deployment", azureOpenAIDeployment)
     .WithEnvironment("AzureOpenAI__ApiKey", azureOpenAIApiKey)
     .WithEnvironment("AzureOpenAI__EmbeddingDeployment", azureOpenAIEmbeddingDeployment);
+
+if (mailpit is not null)
+{
+    // The notifications module's e-mail lands in Mailpit too, unencrypted: Mailpit offers no TLS, and only this local
+    // catcher is allowed none. A deployment gives the host its own SMTP server as the connection string mail
+    // (smtp:// for STARTTLS, smtps:// for TLS), and its sender as Notifications:SenderAddress.
+    var smtp = mailpit.GetEndpoint("smtp");
+    host.WithEnvironment("ConnectionStrings__mail", ReferenceExpression.Create($"smtp://{smtp.Property(EndpointProperty.Host)}:{smtp.Property(EndpointProperty.Port)}"))
+        .WithEnvironment("Notifications__SenderAddress", "noreply@example.com")
+        .WithEnvironment("Notifications__AllowUnencryptedSmtp", "true")
+        .WaitFor(mailpit);
+}
 
 builder.AddViteApp("web", "../../web/app")
     .WithPnpm()
