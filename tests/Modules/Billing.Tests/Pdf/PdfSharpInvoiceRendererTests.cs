@@ -1,3 +1,4 @@
+using System.Globalization;
 using FabricPilot.Modules.Billing.Domain.Invoices;
 using FabricPilot.Modules.Billing.Infrastructure.Pdf;
 using UglyToad.PdfPig;
@@ -26,6 +27,26 @@ public class PdfSharpInvoiceRendererTests
         text.ShouldContain("Managed printing 3 49.90 149.70");
         text.ShouldContain("Toner cartridge 2 1,234.50 2,469.00");
         text.ShouldContain("Total 2,618.70 EUR");
+    }
+
+    [Fact]
+    public void The_pdf_prints_its_gregorian_dates_under_a_host_culture_with_another_calendar()
+    {
+        var invoice = Invoice.Issue(InvoiceId.New(), "2026-0045", new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), "EUR", [Line("Toner", 1, 10m)]).Value;
+        var hostCulture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("th-TH");
+
+        try
+        {
+            var text = Text(new PdfSharpInvoiceRenderer().Render(invoice));
+
+            text.ShouldContain("Issued on 2026-11-01");
+            text.ShouldContain("Due on 2026-11-30");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = hostCulture;
+        }
     }
 
     [Fact]
