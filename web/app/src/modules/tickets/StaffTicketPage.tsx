@@ -12,7 +12,7 @@ const ticketIdSchema = z.uuid();
  */
 export function StaffTicketPage() {
   const ticketId = ticketIdSchema.safeParse(useParams().ticketId);
-  const { data: ticket, isError } = useGetTicketsTicketsAllTenantsByTicketIdQuery(
+  const { currentData: ticket, isError } = useGetTicketsTicketsAllTenantsByTicketIdQuery(
     ticketId.success ? { ticketId: ticketId.data } : skipToken,
   );
 
