@@ -1,6 +1,7 @@
 using FabricPilot.Contracts;
 using FabricPilot.Contracts.Tickets;
 using FabricPilot.Modules.Notifications.Application.Consumers;
+using FabricPilot.Modules.Notifications.Domain.Notices;
 using Microsoft.Extensions.Time.Testing;
 
 namespace FabricPilot.Modules.Notifications.Tests.Consumers;
@@ -79,6 +80,22 @@ public class TicketStatusChangedV1ConsumerTests
         await Consumer().HandleAsync(changed, TestContext.Current.CancellationToken);
         email.Sent.ShouldHaveSingleItem();
         notices.Saved.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task A_send_still_running_at_its_deadline_is_cancelled_before_the_claim_lapses_and_gives_the_claim_back()
+    {
+        var changed = StatusChanged("tenant-a");
+        email.Hangs = true;
+
+        var handling = Consumer().HandleAsync(changed, TestContext.Current.CancellationToken);
+        await email.SendStarted.Task;
+        time.Advance(Notice.EmailSendDeadline);
+
+        await Should.ThrowAsync<OperationCanceledException>(() => handling);
+        Notice.EmailSendDeadline.ShouldBeLessThan(Notice.EmailClaimLease);
+        email.Sent.ShouldBeEmpty();
+        notices.Saved.ShouldHaveSingleItem().Notice.EmailClaimedAt.ShouldBeNull();
     }
 
     [Fact]

@@ -9,6 +9,12 @@ internal sealed class RecordingEmailSender : IEmailSender
 
     public bool FailsNextSend { get; set; }
 
+    /// <summary>Makes every send wait until it is cancelled, as a mail server that keeps answering slowly would.</summary>
+    public bool Hangs { get; set; }
+
+    /// <summary>Completes when a send has started.</summary>
+    public TaskCompletionSource SendStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>Runs once, in the middle of the next send: another delivery arriving meanwhile.</summary>
     public Func<Task>? WhileSending { get; set; }
 
@@ -18,6 +24,12 @@ internal sealed class RecordingEmailSender : IEmailSender
         {
             FailsNextSend = false;
             throw new IOException("The mail server is unreachable.");
+        }
+
+        SendStarted.TrySetResult();
+        if (Hangs)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
         }
 
         if (WhileSending is { } meanwhile)
