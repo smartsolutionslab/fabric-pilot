@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>FabricPilot.Modules.Identity.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Modules/Identity/Identity.Api/Identity.Api.csproj" />
+    <Compile Include="../../Fakes/*.cs" Link="Fakes/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

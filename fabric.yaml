@@ -89,3 +89,8 @@ modules:
     module.ddd-depth: light
     module.cqrs: logical
     module.communication: [integration-events]
+  identity:
+    module.style: ddd
+    module.ddd-depth: light
+    module.cqrs: logical
+    module.communication: [integration-events]

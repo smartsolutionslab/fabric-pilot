@@ -13,11 +13,18 @@ var migrations = builder.AddProject<Projects.MigrationRunner>("migrations")
 // Keycloak runs as a plain container, development only (see docs/adr). Its administrator is "admin", with a password
 // Aspire generates once and keeps in the AppHost's user secrets; the realm in ./realms is imported on first start.
 var keycloakPassword = builder.AddResource(ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "keycloak-password"));
+// The identity module's confidential client, fabric-pilot-user-admin, manages a tenant's users through the admin API. Its
+// secret is generated once like the password above, kept in the AppHost's user secrets, and substituted into the realm
+// import (${FABRIC_PILOT_USER_ADMIN_SECRET} in realm.json), so no secret is committed. Letters and digits only: the value
+// lands inside a JSON string. A deployment sets it from its secret store (infra/keycloak-user-admin.md).
+var userAdminSecret = builder.AddResource(ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "keycloak-user-admin-secret", special: false));
 var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.6")
     .WithArgs("start-dev", "--import-realm")
     .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
     .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", keycloakPassword)
     .WithEnvironment("KC_HEALTH_ENABLED", "true")
+    // Not KC_-prefixed: Keycloak reads those as its own options.
+    .WithEnvironment("FABRIC_PILOT_USER_ADMIN_SECRET", userAdminSecret)
     .WithHttpEndpoint(port: 8080, targetPort: 8080)
     .WithHttpEndpoint(targetPort: 9000, name: "management")
     .WithHttpHealthCheck("/health/ready", endpointName: "management")
@@ -60,6 +67,10 @@ var host = builder.AddProject<Projects.Host>("host")
     .WithReference(keycloak.GetEndpoint("http"))
     .WaitFor(keycloak)
     .WithEnvironment("Authentication__Authority", ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realms/fabric-pilot"))
+    .WithEnvironment("KeycloakAdmin__BaseAddress", keycloak.GetEndpoint("http"))
+    .WithEnvironment("KeycloakAdmin__Realm", "fabric-pilot")
+    .WithEnvironment("KeycloakAdmin__ClientId", "fabric-pilot-user-admin")
+    .WithEnvironment("KeycloakAdmin__ClientSecret", userAdminSecret)
     .WithReference(messaging)
     .WaitFor(messaging)
     .WithReference(blobs)
