@@ -7,7 +7,9 @@ namespace FabricPilot.Modules.Notifications.Application.Consumers;
 /// <summary>
 /// Tells the customer who raised a ticket that its status changed: a notice in the portal and an e-mail, once per event.
 /// The notice is saved before the e-mail is sent and marked e-mailed after, so a redelivered event finds it and sends
-/// nothing, and one whose e-mail failed sends it then. Only a failure between sending and marking sends it twice.
+/// nothing, and one whose e-mail failed sends it then. Two copies handled at once meet at the unique index on the causing
+/// event: the second fails, is retried and finds the notice. A second e-mail goes out only if a failure falls between
+/// sending and marking, or a retried copy finds the notice before the first copy marked it.
 /// </summary>
 public sealed class TicketStatusChangedV1Consumer(INoticeStore notices, IEmailSender email, TimeProvider time)
 {
