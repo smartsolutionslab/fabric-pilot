@@ -6,12 +6,16 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" />
+    <!-- Reads the text back out of the invoice PDFs the host answers with. -->
+    <PackageReference Include="PdfPig" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/AppHost/AppHost.csproj" />
     <!-- The contracts tests record contracts through the module's DbContext: no use case records one yet. -->
     <ProjectReference Include="../../src/Modules/Contracts/Contracts.Infrastructure/Contracts.Infrastructure.csproj" />
+    <!-- The billing tests record invoices through the module's DbContext: no use case issues one yet. -->
+    <ProjectReference Include="../../src/Modules/Billing/Billing.Infrastructure/Billing.Infrastructure.csproj" />
     <!-- The knowledge tests search the shared index as a tenant's use case would, with the fake embeddings the host is given. -->
     <ProjectReference Include="../../src/Modules/Knowledge/Knowledge.Infrastructure/Knowledge.Infrastructure.csproj" />
     <Compile Include="../Fakes/FakeEmbeddingGenerator.cs" Link="Fakes/FakeEmbeddingGenerator.cs" />

@@ -31,6 +31,12 @@ updates:
       - dependency-name: Microsoft.CodeAnalysis.CSharp
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
 
+      # PDFsharp stays at 6.2.4, the last release published under MIT: 6.5.0 and the 7.0 previews are AGPL-3.0-only,
+      # and the owner chose PDFsharp under MIT for invoice PDFs (issue #10). Moving to a later release is the owner's
+      # decision, not an update.
+      - dependency-name: PDFsharp
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
