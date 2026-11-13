@@ -1,0 +1,21 @@
+# Evals gate on the suggested answers
+
+**Status:** Accepted (project decision, owner, 2026-11-13; issue #13). It builds on ADR-0022 (generated) and does not replace it.
+
+## Decision
+
+The suggested answers (`suggest-answer`, Kundenportal feature 8) are held to the evals gate of ADR-0022 on a checked-in dataset, with a check of their sources and a degraded variant that shows the gate failing.
+
+- **The dataset is `tests/Evals/Datasets/support-tickets.json`**: 25 real-looking tickets in English and German. Each lists the articles the search finds for it, nearest first, and the titles of the ones a good answer cites (`expectedSources`). 17 tickets have one answering article, 4 need two together, and 4 have none, so the answer must say no article answers. The answering article is the first passage of only 2 tickets. The tickets hold no personal or secret data, since every run sends them to the provider.
+- **`SupportTicketDataset` checks it before any model is asked.** It needs at least 20 tickets. Every ticket needs a subject, a description and articles. Every expected source must be one of the ticket's own articles, and every ticket must state its expected sources (`[]` for none). A ticket may list at most the 5 articles the search hands the model.
+- **The answer gets the articles as data.** Each article is one passage, given to the module's own `SuggestAnswerHandler` and so delimited in the user message under its unchanged system instruction. Every example is judged for groundedness against all of its articles.
+- **`SourcesEvaluator` is the project's own check, without a judge.** It compares the articles the draft links with the expected ones: 1 + 4 × |both| / |either|. That gives 5 for exactly the expected ones (and for no draft when none is expected), and 1 when none of them is cited or a draft cites one where none answers. Like every metric, its mean over the examples must reach the threshold.
+- **`EVALS_VARIANT=degraded` swaps the suggested answers' instruction** for a careless one (`EvalVariants.DegradedInstruction`). The careless one tells the model to answer from its own knowledge and always cite passage 1. The swap is done by a delegating chat client in `tests/Evals`, which nothing in `src` references, so the application can never send this instruction. The judge always gets the model unwrapped. An unknown value fails rather than running the normal prompt unnoticed. `.github/workflows/evals.yml` asks for the variant on a run by hand. A scheduled run is always normal.
+- **The threshold stays the generated `4`** (`settings.backend.llm.extras.evals.threshold` in `fabric.yaml`). On the evaluators' 1–5 scale, 4 means mostly relevant and grounded, with at most minor gaps. The gate takes the mean per metric, not the lowest score. Over the dataset's 25 tickets, a metric still passes when up to 6 answers score 1 and the rest score 5: one or two noisy judgements do not fail a run, but a quarter of the tickets answered badly does. The same holds for sources. No real run has been seen yet, so there is no evidence for any other value. The owner tunes it after the first real runs, in `fabric.yaml` only. Lowering it to pass a failing run is a decision, not a fix.
+
+## Consequences
+
+- `tests/Evals.Tests` fails the build when the dataset is under 20 tickets, when an expected source is not one of its ticket's articles, when a ticket states none, or when it lists more than 5 articles. It also fails when a model that cites the expected sources does not pass with a full-marks judge, or when the degraded variant does not fail the gate on `suggest-answer: Sources` with that same judge. All of this runs with stand-in models.
+- The degraded run's failure is certain on Sources only if the model obeys the degraded instruction; groundedness should drop too, but that is the judge's call. The owner's degraded run is the evidence.
+- The four tickets no article answers are scored for groundedness on an answer that says so. A judge may score such an answer low against unrelated articles. If the first real runs show that, the owner decides between tuning and taking those examples out of groundedness.
+- A new ticket is a JSON entry. A new metric is an `IEvaluator` added to `EvalRun`, and the threshold applies to it too.

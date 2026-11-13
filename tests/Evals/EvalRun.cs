@@ -9,7 +9,7 @@ namespace FabricPilot.Evals;
 
 /// <summary>
 /// Runs the use cases: the model answers every example, and every answer is scored for relevance, for groundedness
-/// where the example supplies context, and by the project's own checks. The judge scores the judged metrics. Every
+/// where the example supplies context, by the project's own checks, and for its sources where the example expects some. The judge scores the judged metrics. Every
 /// result is written to the results directory under the execution's name, for <c>dotnet aieval report</c>.
 /// </summary>
 public static class EvalRun
@@ -40,8 +40,29 @@ public static class EvalRun
         // No sampling options: the evaluators ask for Temperature 0 and TopP 1, which some models refuse; every provider's
         // defaults apply instead.
         var judgeConfiguration = new ChatConfiguration(judge.AsBuilder().ConfigureOptions(WithoutSamplingOptions).Build());
-        var withoutContext = Reporting(resultsDirectory, executionName, judgeConfiguration, new RelevanceEvaluator(), new AnsweredEvaluator());
-        var withContext = Reporting(resultsDirectory, executionName, judgeConfiguration, new RelevanceEvaluator(), new GroundednessEvaluator(), new AnsweredEvaluator());
+        Dictionary<(bool Grounded, bool Sourced), ReportingConfiguration> reporting = [];
+        ReportingConfiguration For(bool grounded, bool sourced)
+        {
+            if (!reporting.TryGetValue((grounded, sourced), out var configuration))
+            {
+                List<IEvaluator> evaluators = [new RelevanceEvaluator()];
+                if (grounded)
+                {
+                    evaluators.Add(new GroundednessEvaluator());
+                }
+
+                evaluators.Add(new AnsweredEvaluator());
+                if (sourced)
+                {
+                    evaluators.Add(new SourcesEvaluator());
+                }
+
+                configuration = Reporting(resultsDirectory, executionName, judgeConfiguration, [.. evaluators]);
+                reporting[(grounded, sourced)] = configuration;
+            }
+
+            return configuration;
+        }
 
         List<EvalScore> scores = [];
         foreach (var useCase in useCases)
@@ -49,11 +70,20 @@ public static class EvalRun
             for (var index = 0; index < useCase.Examples.Count; index++)
             {
                 var current = useCase.Examples[index];
-                var (input, groundingContext) = current;
+                var (input, groundingContext, expectedSources) = current;
                 var example = (index + 1).ToString(CultureInfo.InvariantCulture);
-                EvaluationContext[] context = groundingContext is null ? [] : [new GroundednessEvaluatorContext(groundingContext)];
+                List<EvaluationContext> context = [];
+                if (groundingContext is not null)
+                {
+                    context.Add(new GroundednessEvaluatorContext(groundingContext));
+                }
 
-                await using var scenario = await (groundingContext is null ? withoutContext : withContext)
+                if (expectedSources is not null)
+                {
+                    context.Add(new ExpectedSourcesContext(expectedSources));
+                }
+
+                await using var scenario = await For(groundingContext is not null, expectedSources is not null)
                     .CreateScenarioRunAsync(useCase.Name, example, cancellationToken: cancellationToken);
                 var response = await useCase.Answer(model, current, cancellationToken);
                 var result = await scenario.EvaluateAsync([new ChatMessage(ChatRole.User, input)], response, context, cancellationToken);

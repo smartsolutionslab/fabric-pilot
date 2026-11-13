@@ -1,0 +1,489 @@
+{
+  "tickets": [
+    {
+      "subject": "Printer shows error 42 since this morning",
+      "description": "Our office printer stopped printing and shows error 42. What can we do?",
+      "articles": [
+        {
+          "title": "Close a ticket",
+          "body": "Support closes a ticket when it is solved; a customer can close one under Tickets: open the ticket and choose Close. A closed ticket can be reopened within 14 days of closing. After that, open a new ticket and mention the number of the old one."
+        },
+        {
+          "title": "Printer error 42",
+          "body": "Error 42 means the print spooler stopped. Open Services on the computer that shares the printer, restart the Print Spooler service, then print a test page. If the error comes back, reinstall the printer driver."
+        },
+        {
+          "title": "Support hours and response times",
+          "body": "Support answers tickets Monday to Friday, 8:00 to 18:00 CET. The first response to a ticket of priority High is due within 4 business hours, Normal within 1 business day, Low within 3 business days. An outage of a production system can be reported at any time on the hotline named in your contract."
+        }
+      ],
+      "expectedSources": [
+        "Printer error 42"
+      ]
+    },
+    {
+      "subject": "VPN sign-in rejected",
+      "description": "Since today the VPN client rejects my sign-in, although I type the right password.",
+      "articles": [
+        {
+          "title": "Reset your portal password",
+          "body": "Choose Forgot password on the sign-in page and enter your e-mail address. The link in the e-mail is valid for 30 minutes. If no e-mail arrives within 10 minutes, check the spam folder; a company administrator can also send a new link under Company > Users."
+        },
+        {
+          "title": "VPN sign-in fails",
+          "body": "When the VPN client rejects a sign-in with a correct password, the password has usually expired. Reset it in the self-service portal, wait five minutes for it to reach the VPN, then sign in again."
+        },
+        {
+          "title": "Two-factor authentication",
+          "body": "Two-factor authentication is required for every portal user. It is set up with any authenticator app at the first sign-in. If the phone with the app is lost, a company administrator resets the second factor under Company > Users > Reset two-factor, and the user sets it up again at the next sign-in."
+        }
+      ],
+      "expectedSources": [
+        "VPN sign-in fails"
+      ]
+    },
+    {
+      "subject": "Rechnungsadresse ändern",
+      "description": "Wir sind umgezogen. Bitte ändern Sie die Rechnungsadresse auf unseren Rechnungen auf die neue Anschrift.",
+      "articles": [
+        {
+          "title": "VAT ID on invoices",
+          "body": "Invoices show the VAT ID stored under Company > Billing details. A VAT ID added or changed there appears on invoices issued after the change. Invoices to companies in other EU countries are issued without VAT (reverse charge) only when the VAT ID is valid in the EU's VIES register."
+        },
+        {
+          "title": "Change the billing address",
+          "body": "Company administrators change the billing address themselves: in the portal, open Company > Billing details, edit the address and save. The change applies to every invoice issued after it; invoices already issued keep the old address. If an issued invoice must be corrected, open a ticket with the category Billing and name the invoice number."
+        },
+        {
+          "title": "Download invoices as PDF",
+          "body": "Every invoice of the last ten years can be downloaded under Invoices: open the invoice and choose Download PDF. To download several invoices at once, select them in the list and choose Download as ZIP. Invoices older than ten years are deleted when their retention period ends."
+        }
+      ],
+      "expectedSources": [
+        "Change the billing address"
+      ]
+    },
+    {
+      "subject": "Switch to direct debit",
+      "description": "We would like to stop paying by bank transfer and have our monthly invoices collected by direct debit instead. How do we set that up, and from when does it apply?",
+      "articles": [
+        {
+          "title": "Payment reminders and late fees",
+          "body": "A first reminder is sent 14 days after an invoice falls due, without a fee. A second reminder follows 14 days later, with a fee of 5 EUR. A payment takes up to 3 working days to be booked, so a reminder that crosses a payment can be ignored."
+        },
+        {
+          "title": "Download invoices as PDF",
+          "body": "Every invoice of the last ten years can be downloaded under Invoices: open the invoice and choose Download PDF. To download several invoices at once, select them in the list and choose Download as ZIP. Invoices older than ten years are deleted when their retention period ends."
+        },
+        {
+          "title": "Pay by SEPA direct debit",
+          "body": "To pay invoices by SEPA direct debit, a company administrator opens Company > Payment method, chooses SEPA direct debit and enters the IBAN and the account holder. The portal then shows a mandate to sign online. Direct debit applies from the first invoice issued after the mandate is signed; the amount is collected 5 working days after the invoice date."
+        }
+      ],
+      "expectedSources": [
+        "Pay by SEPA direct debit"
+      ]
+    },
+    {
+      "subject": "Mahnung erhalten, obwohl bezahlt",
+      "description": "Wir haben heute eine Zahlungserinnerung bekommen, die Rechnung aber schon vor zwei Tagen überwiesen. Müssen wir noch etwas tun?",
+      "articles": [
+        {
+          "title": "Pay by SEPA direct debit",
+          "body": "To pay invoices by SEPA direct debit, a company administrator opens Company > Payment method, chooses SEPA direct debit and enters the IBAN and the account holder. The portal then shows a mandate to sign online. Direct debit applies from the first invoice issued after the mandate is signed; the amount is collected 5 working days after the invoice date."
+        },
+        {
+          "title": "Payment reminders and late fees",
+          "body": "A first reminder is sent 14 days after an invoice falls due, without a fee. A second reminder follows 14 days later, with a fee of 5 EUR. A payment takes up to 3 working days to be booked, so a reminder that crosses a payment can be ignored."
+        },
+        {
+          "title": "Close a ticket",
+          "body": "Support closes a ticket when it is solved; a customer can close one under Tickets: open the ticket and choose Close. A closed ticket can be reopened within 14 days of closing. After that, open a new ticket and mention the number of the old one."
+        }
+      ],
+      "expectedSources": [
+        "Payment reminders and late fees"
+      ]
+    },
+    {
+      "subject": "All 2025 invoices for our auditor",
+      "description": "Our auditor needs copies of all invoices from 2025. Is there a way to get them without opening each one?",
+      "articles": [
+        {
+          "title": "Download invoices as PDF",
+          "body": "Every invoice of the last ten years can be downloaded under Invoices: open the invoice and choose Download PDF. To download several invoices at once, select them in the list and choose Download as ZIP. Invoices older than ten years are deleted when their retention period ends."
+        },
+        {
+          "title": "Payment reminders and late fees",
+          "body": "A first reminder is sent 14 days after an invoice falls due, without a fee. A second reminder follows 14 days later, with a fee of 5 EUR. A payment takes up to 3 working days to be booked, so a reminder that crosses a payment can be ignored."
+        },
+        {
+          "title": "VAT ID on invoices",
+          "body": "Invoices show the VAT ID stored under Company > Billing details. A VAT ID added or changed there appears on invoices issued after the change. Invoices to companies in other EU countries are issued without VAT (reverse charge) only when the VAT ID is valid in the EU's VIES register."
+        }
+      ],
+      "expectedSources": [
+        "Download invoices as PDF"
+      ]
+    },
+    {
+      "subject": "Kündigung des Servicevertrags",
+      "description": "Wir möchten unseren Servicevertrag zum Ende der Laufzeit kündigen. Bis wann müssen wir kündigen, und wie geht das?",
+      "articles": [
+        {
+          "title": "Upgrade or downgrade a service plan",
+          "body": "An upgrade to a larger plan takes effect on the next day and is billed pro rata for the rest of the month. A downgrade to a smaller plan takes effect at the end of the current contract term. Both are requested under Contracts > Change plan."
+        },
+        {
+          "title": "Contract notice periods",
+          "body": "Service contracts run for 12 months and renew for another 12 months unless they are cancelled at least 3 months before the end of the term. A company administrator cancels under Contracts: open the contract and choose Cancel. The portal confirms the cancellation and the end date by e-mail."
+        },
+        {
+          "title": "Support hours and response times",
+          "body": "Support answers tickets Monday to Friday, 8:00 to 18:00 CET. The first response to a ticket of priority High is due within 4 business hours, Normal within 1 business day, Low within 3 business days. An outage of a production system can be reported at any time on the hotline named in your contract."
+        }
+      ],
+      "expectedSources": [
+        "Contract notice periods"
+      ]
+    },
+    {
+      "subject": "Moving to a smaller plan",
+      "description": "We need fewer seats from now on. Can we move to a smaller plan right away, and how do we request it?",
+      "articles": [
+        {
+          "title": "Contract notice periods",
+          "body": "Service contracts run for 12 months and renew for another 12 months unless they are cancelled at least 3 months before the end of the term. A company administrator cancels under Contracts: open the contract and choose Cancel. The portal confirms the cancellation and the end date by e-mail."
+        },
+        {
+          "title": "Upgrade or downgrade a service plan",
+          "body": "An upgrade to a larger plan takes effect on the next day and is billed pro rata for the rest of the month. A downgrade to a smaller plan takes effect at the end of the current contract term. Both are requested under Contracts > Change plan."
+        }
+      ],
+      "expectedSources": [
+        "Upgrade or downgrade a service plan"
+      ]
+    },
+    {
+      "subject": "Password reset link expired",
+      "description": "I clicked the reset link from this morning, but the page says it has expired. I requested a new one and no e-mail has arrived.",
+      "articles": [
+        {
+          "title": "Two-factor authentication",
+          "body": "Two-factor authentication is required for every portal user. It is set up with any authenticator app at the first sign-in. If the phone with the app is lost, a company administrator resets the second factor under Company > Users > Reset two-factor, and the user sets it up again at the next sign-in."
+        },
+        {
+          "title": "Reset your portal password",
+          "body": "Choose Forgot password on the sign-in page and enter your e-mail address. The link in the e-mail is valid for 30 minutes. If no e-mail arrives within 10 minutes, check the spam folder; a company administrator can also send a new link under Company > Users."
+        },
+        {
+          "title": "E-mail notifications",
+          "body": "The portal sends an e-mail when a ticket is answered or its status changes. Each user can switch these e-mails off under Profile > Notifications. Invoices are always sent by e-mail to the billing contact, whatever these settings say."
+        }
+      ],
+      "expectedSources": [
+        "Reset your portal password"
+      ]
+    },
+    {
+      "subject": "Diensthandy verloren, keine Anmeldung möglich",
+      "description": "Ich habe mein Diensthandy verloren und komme wegen der Zwei-Faktor-Anmeldung nicht mehr ins Portal. Was nun?",
+      "articles": [
+        {
+          "title": "Reset your portal password",
+          "body": "Choose Forgot password on the sign-in page and enter your e-mail address. The link in the e-mail is valid for 30 minutes. If no e-mail arrives within 10 minutes, check the spam folder; a company administrator can also send a new link under Company > Users."
+        },
+        {
+          "title": "Two-factor authentication",
+          "body": "Two-factor authentication is required for every portal user. It is set up with any authenticator app at the first sign-in. If the phone with the app is lost, a company administrator resets the second factor under Company > Users > Reset two-factor, and the user sets it up again at the next sign-in."
+        },
+        {
+          "title": "Add users to your company account",
+          "body": "Company administrators invite users under Company > Users > Invite. The invited person receives an e-mail and sets a password. A new user has the role Member, which can read the company's tickets, contracts and invoices; only an administrator can make a user an administrator. A company account can have up to 50 users."
+        }
+      ],
+      "expectedSources": [
+        "Two-factor authentication"
+      ]
+    },
+    {
+      "subject": "Access for a new colleague",
+      "description": "A new colleague has joined our accounting team. How does she get access to the portal, and will she be able to see our invoices?",
+      "articles": [
+        {
+          "title": "Two-factor authentication",
+          "body": "Two-factor authentication is required for every portal user. It is set up with any authenticator app at the first sign-in. If the phone with the app is lost, a company administrator resets the second factor under Company > Users > Reset two-factor, and the user sets it up again at the next sign-in."
+        },
+        {
+          "title": "E-mail notifications",
+          "body": "The portal sends an e-mail when a ticket is answered or its status changes. Each user can switch these e-mails off under Profile > Notifications. Invoices are always sent by e-mail to the billing contact, whatever these settings say."
+        },
+        {
+          "title": "Add users to your company account",
+          "body": "Company administrators invite users under Company > Users > Invite. The invited person receives an e-mail and sets a password. A new user has the role Member, which can read the company's tickets, contracts and invoices; only an administrator can make a user an administrator. A company account can have up to 50 users."
+        }
+      ],
+      "expectedSources": [
+        "Add users to your company account"
+      ]
+    },
+    {
+      "subject": "Production system down, how fast do you respond?",
+      "description": "Our ERP system is down in production. When can we expect an answer to the ticket we just opened, and is there a faster way to reach you?",
+      "articles": [
+        {
+          "title": "Close a ticket",
+          "body": "Support closes a ticket when it is solved; a customer can close one under Tickets: open the ticket and choose Close. A closed ticket can be reopened within 14 days of closing. After that, open a new ticket and mention the number of the old one."
+        },
+        {
+          "title": "Planned maintenance windows",
+          "body": "Planned maintenance takes place on the first Saturday of each month between 22:00 and 02:00 CET. The portal and the hosted services may be unavailable during that window. Maintenance is announced in the portal at least 7 days in advance."
+        },
+        {
+          "title": "Support hours and response times",
+          "body": "Support answers tickets Monday to Friday, 8:00 to 18:00 CET. The first response to a ticket of priority High is due within 4 business hours, Normal within 1 business day, Low within 3 business days. An outage of a production system can be reported at any time on the hotline named in your contract."
+        }
+      ],
+      "expectedSources": [
+        "Support hours and response times"
+      ]
+    },
+    {
+      "subject": "Portal am Samstagabend nicht erreichbar",
+      "description": "Am Samstagabend gegen 23 Uhr war das Portal nicht erreichbar. War das eine Störung, und müssen wir damit wieder rechnen?",
+      "articles": [
+        {
+          "title": "Support hours and response times",
+          "body": "Support answers tickets Monday to Friday, 8:00 to 18:00 CET. The first response to a ticket of priority High is due within 4 business hours, Normal within 1 business day, Low within 3 business days. An outage of a production system can be reported at any time on the hotline named in your contract."
+        },
+        {
+          "title": "Planned maintenance windows",
+          "body": "Planned maintenance takes place on the first Saturday of each month between 22:00 and 02:00 CET. The portal and the hosted services may be unavailable during that window. Maintenance is announced in the portal at least 7 days in advance."
+        }
+      ],
+      "expectedSources": [
+        "Planned maintenance windows"
+      ]
+    },
+    {
+      "subject": "Cancelling and keeping our records",
+      "description": "We have decided not to renew our contract, which ends in five months. How do we cancel, and can we get a copy of all our tickets and invoices before the account closes?",
+      "articles": [
+        {
+          "title": "Planned maintenance windows",
+          "body": "Planned maintenance takes place on the first Saturday of each month between 22:00 and 02:00 CET. The portal and the hosted services may be unavailable during that window. Maintenance is announced in the portal at least 7 days in advance."
+        },
+        {
+          "title": "Contract notice periods",
+          "body": "Service contracts run for 12 months and renew for another 12 months unless they are cancelled at least 3 months before the end of the term. A company administrator cancels under Contracts: open the contract and choose Cancel. The portal confirms the cancellation and the end date by e-mail."
+        },
+        {
+          "title": "Export your company's data",
+          "body": "A company administrator can request an export of all the company's tickets, contracts and invoices under Company > Data export. The export is prepared within 24 hours and can be downloaded as a ZIP file for 7 days."
+        }
+      ],
+      "expectedSources": [
+        "Contract notice periods",
+        "Export your company's data"
+      ]
+    },
+    {
+      "subject": "Invoice charged VAT, our VAT ID is missing",
+      "description": "Our last invoice charged German VAT although we are based in Austria, and our VAT ID is not on it. Please correct the invoice and make sure it does not happen again.",
+      "articles": [
+        {
+          "title": "Download invoices as PDF",
+          "body": "Every invoice of the last ten years can be downloaded under Invoices: open the invoice and choose Download PDF. To download several invoices at once, select them in the list and choose Download as ZIP. Invoices older than ten years are deleted when their retention period ends."
+        },
+        {
+          "title": "VAT ID on invoices",
+          "body": "Invoices show the VAT ID stored under Company > Billing details. A VAT ID added or changed there appears on invoices issued after the change. Invoices to companies in other EU countries are issued without VAT (reverse charge) only when the VAT ID is valid in the EU's VIES register."
+        },
+        {
+          "title": "Change the billing address",
+          "body": "Company administrators change the billing address themselves: in the portal, open Company > Billing details, edit the address and save. The change applies to every invoice issued after it; invoices already issued keep the old address. If an issued invoice must be corrected, open a ticket with the category Billing and name the invoice number."
+        }
+      ],
+      "expectedSources": [
+        "VAT ID on invoices",
+        "Change the billing address"
+      ]
+    },
+    {
+      "subject": "Bestellnummer auf Rechnungen",
+      "description": "Unsere Buchhaltung braucht ab sofort auf jeder Rechnung unsere Bestellnummer. Wo können wir die hinterlegen?",
+      "articles": [
+        {
+          "title": "VAT ID on invoices",
+          "body": "Invoices show the VAT ID stored under Company > Billing details. A VAT ID added or changed there appears on invoices issued after the change. Invoices to companies in other EU countries are issued without VAT (reverse charge) only when the VAT ID is valid in the EU's VIES register."
+        },
+        {
+          "title": "Purchase order numbers on invoices",
+          "body": "To show your purchase order number on invoices, enter it under Contracts: open the contract and fill in Purchase order number. It is printed on every invoice for that contract issued after it was entered."
+        }
+      ],
+      "expectedSources": [
+        "Purchase order numbers on invoices"
+      ]
+    },
+    {
+      "subject": "Too many e-mails from the portal",
+      "description": "I get an e-mail every time one of our tickets changes. Can I switch those off, and will I still receive our invoices?",
+      "articles": [
+        {
+          "title": "Close a ticket",
+          "body": "Support closes a ticket when it is solved; a customer can close one under Tickets: open the ticket and choose Close. A closed ticket can be reopened within 14 days of closing. After that, open a new ticket and mention the number of the old one."
+        },
+        {
+          "title": "E-mail notifications",
+          "body": "The portal sends an e-mail when a ticket is answered or its status changes. Each user can switch these e-mails off under Profile > Notifications. Invoices are always sent by e-mail to the billing contact, whatever these settings say."
+        }
+      ],
+      "expectedSources": [
+        "E-mail notifications"
+      ]
+    },
+    {
+      "subject": "Please reopen my old ticket",
+      "description": "Three weeks ago you closed my ticket about the VPN. The problem is back. Can you reopen that ticket?",
+      "articles": [
+        {
+          "title": "Close a ticket",
+          "body": "Support closes a ticket when it is solved; a customer can close one under Tickets: open the ticket and choose Close. A closed ticket can be reopened within 14 days of closing. After that, open a new ticket and mention the number of the old one."
+        },
+        {
+          "title": "VPN sign-in fails",
+          "body": "When the VPN client rejects a sign-in with a correct password, the password has usually expired. Reset it in the self-service portal, wait five minutes for it to reach the VPN, then sign in again."
+        }
+      ],
+      "expectedSources": [
+        "Close a ticket"
+      ]
+    },
+    {
+      "subject": "Sales mailbox rejects incoming mail",
+      "description": "Our sales mailbox has rejected incoming mail since this morning. How do we get more space, and what will it cost us this month?",
+      "articles": [
+        {
+          "title": "Mailbox storage quota",
+          "body": "Each hosted mailbox holds 50 GB. At 90 percent its user receives a warning; at 100 percent new mail is rejected. More storage is ordered under Contracts > Change plan, in steps of 50 GB."
+        },
+        {
+          "title": "Upgrade or downgrade a service plan",
+          "body": "An upgrade to a larger plan takes effect on the next day and is billed pro rata for the rest of the month. A downgrade to a smaller plan takes effect at the end of the current contract term. Both are requested under Contracts > Change plan."
+        },
+        {
+          "title": "E-mail notifications",
+          "body": "The portal sends an e-mail when a ticket is answered or its status changes. Each user can switch these e-mails off under Profile > Notifications. Invoices are always sent by e-mail to the billing contact, whatever these settings say."
+        }
+      ],
+      "expectedSources": [
+        "Mailbox storage quota",
+        "Upgrade or downgrade a service plan"
+      ]
+    },
+    {
+      "subject": "Larger plan from tomorrow",
+      "description": "We want the larger plan starting tomorrow. How will this month be billed, and where do we order it?",
+      "articles": [
+        {
+          "title": "Pay by SEPA direct debit",
+          "body": "To pay invoices by SEPA direct debit, a company administrator opens Company > Payment method, chooses SEPA direct debit and enters the IBAN and the account holder. The portal then shows a mandate to sign online. Direct debit applies from the first invoice issued after the mandate is signed; the amount is collected 5 working days after the invoice date."
+        },
+        {
+          "title": "Upgrade or downgrade a service plan",
+          "body": "An upgrade to a larger plan takes effect on the next day and is billed pro rata for the rest of the month. A downgrade to a smaller plan takes effect at the end of the current contract term. Both are requested under Contracts > Change plan."
+        }
+      ],
+      "expectedSources": [
+        "Upgrade or downgrade a service plan"
+      ]
+    },
+    {
+      "subject": "Neuer Mitarbeiter braucht Zugang",
+      "description": "Ein neuer Mitarbeiter soll Zugang zum Portal bekommen. Wie laden wir ihn ein, und was muss er bei der ersten Anmeldung einrichten?",
+      "articles": [
+        {
+          "title": "Add users to your company account",
+          "body": "Company administrators invite users under Company > Users > Invite. The invited person receives an e-mail and sets a password. A new user has the role Member, which can read the company's tickets, contracts and invoices; only an administrator can make a user an administrator. A company account can have up to 50 users."
+        },
+        {
+          "title": "Reset your portal password",
+          "body": "Choose Forgot password on the sign-in page and enter your e-mail address. The link in the e-mail is valid for 30 minutes. If no e-mail arrives within 10 minutes, check the spam folder; a company administrator can also send a new link under Company > Users."
+        },
+        {
+          "title": "Two-factor authentication",
+          "body": "Two-factor authentication is required for every portal user. It is set up with any authenticator app at the first sign-in. If the phone with the app is lost, a company administrator resets the second factor under Company > Users > Reset two-factor, and the user sets it up again at the next sign-in."
+        }
+      ],
+      "expectedSources": [
+        "Add users to your company account",
+        "Two-factor authentication"
+      ]
+    },
+    {
+      "subject": "Wrong billing address",
+      "description": "Please change the billing address on our invoices to our new office.",
+      "articles": [
+        {
+          "title": "Printer error 42",
+          "body": "Error 42 means the print spooler stopped. Open Services on the computer that shares the printer, restart the Print Spooler service, then print a test page. If the error comes back, reinstall the printer driver."
+        }
+      ],
+      "expectedSources": []
+    },
+    {
+      "subject": "API-Zugang für unser ERP",
+      "description": "Gibt es eine REST-API, über die unser ERP-System Tickets automatisch anlegen kann?",
+      "articles": [
+        {
+          "title": "Add users to your company account",
+          "body": "Company administrators invite users under Company > Users > Invite. The invited person receives an e-mail and sets a password. A new user has the role Member, which can read the company's tickets, contracts and invoices; only an administrator can make a user an administrator. A company account can have up to 50 users."
+        },
+        {
+          "title": "E-mail notifications",
+          "body": "The portal sends an e-mail when a ticket is answered or its status changes. Each user can switch these e-mails off under Profile > Notifications. Invoices are always sent by e-mail to the billing contact, whatever these settings say."
+        },
+        {
+          "title": "Export your company's data",
+          "body": "A company administrator can request an export of all the company's tickets, contracts and invoices under Company > Data export. The export is prepared within 24 hours and can be downloaded as a ZIP file for 7 days."
+        }
+      ],
+      "expectedSources": []
+    },
+    {
+      "subject": "Invoices in Italian",
+      "description": "Can we receive our invoices in Italian for our branch in Milan?",
+      "articles": [
+        {
+          "title": "Download invoices as PDF",
+          "body": "Every invoice of the last ten years can be downloaded under Invoices: open the invoice and choose Download PDF. To download several invoices at once, select them in the list and choose Download as ZIP. Invoices older than ten years are deleted when their retention period ends."
+        },
+        {
+          "title": "VAT ID on invoices",
+          "body": "Invoices show the VAT ID stored under Company > Billing details. A VAT ID added or changed there appears on invoices issued after the change. Invoices to companies in other EU countries are issued without VAT (reverse charge) only when the VAT ID is valid in the EU's VIES register."
+        },
+        {
+          "title": "Change the billing address",
+          "body": "Company administrators change the billing address themselves: in the portal, open Company > Billing details, edit the address and save. The change applies to every invoice issued after it; invoices already issued keep the old address. If an issued invoice must be corrected, open a ticket with the category Billing and name the invoice number."
+        }
+      ],
+      "expectedSources": []
+    },
+    {
+      "subject": "Technician on site next week",
+      "description": "Could a technician come to our office next week to set up the screens in our new meeting room?",
+      "articles": [
+        {
+          "title": "Support hours and response times",
+          "body": "Support answers tickets Monday to Friday, 8:00 to 18:00 CET. The first response to a ticket of priority High is due within 4 business hours, Normal within 1 business day, Low within 3 business days. An outage of a production system can be reported at any time on the hotline named in your contract."
+        },
+        {
+          "title": "Planned maintenance windows",
+          "body": "Planned maintenance takes place on the first Saturday of each month between 22:00 and 02:00 CET. The portal and the hosted services may be unavailable during that window. Maintenance is announced in the portal at least 7 days in advance."
+        }
+      ],
+      "expectedSources": []
+    }
+  ]
+}
