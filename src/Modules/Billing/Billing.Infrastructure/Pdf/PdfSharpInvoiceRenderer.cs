@@ -47,7 +47,7 @@ public sealed class PdfSharpInvoiceRenderer : IInvoicePdfRenderer
         using var document = new PdfDocument();
         document.Info.Title = $"Invoice {invoice.Number}";
         var page = new InvoicePage(document);
-        page.Write(Title, $"Invoice {invoice.Number}", 24);
+        page.WriteFitted(Title, $"Invoice {invoice.Number}", 24);
         page.Write(Body, $"Issued on {invoice.IssuedOn:yyyy-MM-dd}", LineHeight);
         page.Write(Body, $"Due on {invoice.DueOn:yyyy-MM-dd}", LineHeight * 2);
         page.TableHeading(invoice.Currency);
@@ -123,6 +123,14 @@ public sealed class PdfSharpInvoiceRenderer : IInvoicePdfRenderer
         {
             graphics.DrawString(text, font, XBrushes.Black, new XPoint(Margin, top + font.Size));
             top += advance;
+        }
+
+        /// <summary>At the font's size if it fits between the margins, or at the smaller size at which it does.</summary>
+        public void WriteFitted(XFont font, string text, double advance)
+        {
+            var width = graphics.MeasureString(text, font).Width;
+            var available = Right - Margin;
+            Write(width <= available ? font : new XFont(FontFamily, font.Size * available / width, font.Style), text, advance);
         }
 
         public void TableHeading(string currency)

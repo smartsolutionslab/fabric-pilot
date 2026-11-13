@@ -72,10 +72,10 @@ public sealed partial class Invoice : AggregateRoot<InvoiceId>
         }
 
         var invoice = new Invoice(id, number, issuedOn, dueOn, currency);
+        // Copies, so the invoice owns its lines: the caller's may be given twice, or to another invoice too.
         foreach (var (index, line) in lines.Index())
         {
-            line.PlaceAt(index + 1);
-            invoice.lines.Add(line);
+            invoice.lines.Add(line.CopyAt(index + 1));
         }
 
         invoice.Total = lines.Sum(line => line.Amount);

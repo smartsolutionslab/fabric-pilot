@@ -45,5 +45,5 @@ public sealed class InvoiceLine
         return Success(new InvoiceLine(description, quantity, unitPrice));
     }
 
-    internal void PlaceAt(int position) => Position = position;
+    internal InvoiceLine CopyAt(int position) => new(Description, Quantity, UnitPrice) { Position = position };
 }
