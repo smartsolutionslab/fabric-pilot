@@ -90,6 +90,19 @@ public sealed class SupportTicketDatasetTests : IDisposable
     }
 
     [Fact]
+    public void A_ticket_with_more_articles_than_the_search_hands_the_model_fails_since_the_rest_would_never_be_seen()
+    {
+        var articles = string.Join(", ", Enumerable.Range(1, SuggestAnswerHandler.PassageCount + 1).Select(number => $$"""{ "title": "Article {{number}}", "body": "Body." }"""));
+        var ticket = $$"""{ "subject": "VPN", "description": "No VPN.", "articles": [ {{articles}} ], "expectedSources": [ "Article 6" ] }""";
+        var path = Write($$"""{ "tickets": [ {{string.Join(", ", Enumerable.Repeat(ticket, 20))}} ] }""");
+
+        var message = Should.Throw<InvalidOperationException>(() => SupportTicketDataset.Load(path)).Message;
+
+        message.ShouldContain("Ticket 1");
+        message.ShouldContain($"at most {SuggestAnswerHandler.PassageCount} articles");
+    }
+
+    [Fact]
     public void A_ticket_becomes_an_example_whose_input_is_subject_and_description_and_whose_grounding_context_is_every_article()
     {
         var ticket = new SupportTicket(
