@@ -17,6 +17,8 @@ public sealed partial class InstructionFollowingModel(IReadOnlyDictionary<string
 {
     private const string Draft = "Please follow the steps in the article.";
 
+    private static readonly int[] FirstPassage = [1];
+
     private readonly List<IReadOnlyList<ChatMessage>> requests = [];
 
     /// <summary>The messages of every request, in the order they came.</summary>
@@ -37,7 +39,7 @@ public sealed partial class InstructionFollowingModel(IReadOnlyDictionary<string
         var system = request.FirstOrDefault(message => message.Role == ChatRole.System)?.Text;
         if (system != SuggestionPrompt.Instruction)
         {
-            return Answer(JsonSerializer.Serialize(new { answered = true, answer = Draft, sources = new[] { 1 } }));
+            return Answer(JsonSerializer.Serialize(new { answered = true, answer = Draft, sources = FirstPassage }));
         }
 
         var titles = Passage().Matches(user).ToDictionary(match => match.Groups["title"].Value, match => int.Parse(match.Groups["number"].Value, CultureInfo.InvariantCulture));

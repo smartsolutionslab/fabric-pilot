@@ -59,6 +59,6 @@ public sealed class EvalsWorkflowTests
     private static YamlMappingNode Map(YamlMappingNode node, params string[] path) =>
         path.Aggregate(node, (current, key) => (YamlMappingNode)current.Children[new YamlScalarNode(key)]);
 
-    private static string? Scalar(YamlMappingNode node, string key) =>
-        ((YamlScalarNode)node.Children[new YamlScalarNode(key)]).Value;
+    private static string Scalar(YamlMappingNode node, string key) =>
+        ((YamlScalarNode)node.Children[new YamlScalarNode(key)]).Value ?? string.Empty;
 }
