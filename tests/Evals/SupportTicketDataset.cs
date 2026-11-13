@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FabricPilot.Modules.Knowledge.Application.Queries.SuggestAnswer;
 
 namespace FabricPilot.Evals;
 
@@ -71,6 +72,11 @@ public static class SupportTicketDataset
         if (articles.Count == 0 || articles.Any(article => string.IsNullOrWhiteSpace(article.Title) || string.IsNullOrWhiteSpace(article.Body)))
         {
             throw new InvalidOperationException($"{name} needs articles, each with a title and a body.");
+        }
+
+        if (articles.Count > SuggestAnswerHandler.PassageCount)
+        {
+            throw new InvalidOperationException($"{name} has {articles.Count} articles, but the search hands the model at most {SuggestAnswerHandler.PassageCount} articles, so the rest would never be seen.");
         }
 
         if (articles.Any(article => article.Title.Contains('\n', StringComparison.Ordinal) || $"{article.Title}\n\n{article.Body}".Contains(EvalPassages.ArticleSeparator, StringComparison.Ordinal)))
