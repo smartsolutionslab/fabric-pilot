@@ -80,6 +80,7 @@ public class IdentityTenantAdminsTests(AspireFixture aspire)
         using var response = await staff.PutAsJsonAsync(new Uri($"/identity/tenants/tenant-b/admins/{developer}/role", UriKind.Relative), new { role = "customer-user" }, cancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await response.Content.ReadAsStringAsync(cancellationToken)).ShouldContain("identity.user-not-found");
         (await realm.FindAsync("developer", cancellationToken))!.MappedRoles.ShouldContain("customer-admin");
     }
 

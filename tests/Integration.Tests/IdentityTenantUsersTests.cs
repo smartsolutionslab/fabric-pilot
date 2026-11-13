@@ -105,6 +105,7 @@ public class IdentityTenantUsersTests(AspireFixture aspire)
         using var response = await developer.PutAsJsonAsync(new Uri($"/identity/users/{staff}/role", UriKind.Relative), new { role = "customer-user" }, cancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await response.Content.ReadAsStringAsync(cancellationToken)).ShouldContain("identity.user-not-found");
     }
 
     [Fact]
