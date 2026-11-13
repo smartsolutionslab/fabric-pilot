@@ -8,6 +8,9 @@ public static class BillingPolicyNames
 {
     public const string Manage = "billing.manage";
 
+    /// <summary>A customer reads their own tenant's invoices and downloads them.</summary>
+    public const string ReadInvoices = "billing.read-invoices";
+
     /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
     public const string ReadAllTenants = "billing.read-all-tenants";
 
