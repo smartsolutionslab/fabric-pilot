@@ -110,6 +110,18 @@ test('a drafted answer is shown for staff to edit, with each source article link
   expect(draft).toHaveValue('Dear customer, restart the spooler.');
 });
 
+test('a source article opens beside the draft, so reading it keeps the edits', async () => {
+  const user = userEvent.setup();
+  renderTicket();
+
+  await user.click(screen.getByRole('button', { name: 'Suggest an answer' }));
+  await screen.findByRole('textbox', { name: 'Draft answer' });
+
+  const source = within(screen.getByRole('list', { name: 'Sources' })).getByRole('link', { name: 'Printer error 42' });
+  expect(source).toHaveAttribute('target', '_blank');
+  expect(source).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
 test('nothing is sent to the customer: the page offers no way to send the draft', async () => {
   const user = userEvent.setup();
   renderTicket();

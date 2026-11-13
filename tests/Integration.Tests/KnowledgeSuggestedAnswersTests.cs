@@ -59,6 +59,28 @@ public class KnowledgeSuggestedAnswersTests(AspireFixture aspire)
     }
 
     [Fact]
+    public async Task An_article_edited_but_not_indexed_again_lends_no_passage_of_its_previous_text()
+    {
+        var word = UniqueWord();
+        var held = UniqueWord();
+        using var staff = await aspire.CreateHostClientAsync("staff");
+        var id = await WriteAndPublishAsync(staff, $"Guidance {word}", $"Previous guidance {word} restart the router.");
+        using var model = new FakeChatClient("""{"answered":false,"answer":"","sources":[]}""");
+        using var answering = aspire.Model.Answer(word, model);
+        using var slowEmbeddings = aspire.Model.Hold(held);
+        var editing = staff.PutAsJsonAsync(new Uri($"{Articles}/{id}", UriKind.Relative), new { title = $"Guidance {word}", body = $"Current guidance {word} {held} call support." }, TestContext.Current.CancellationToken);
+        await slowEmbeddings.Arrived.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        var suggestion = await SuggestAsync(staff, $"Guidance {word}: should I restart the router?");
+        slowEmbeddings.Dispose();
+        using var edited = await editing;
+
+        edited.StatusCode.ShouldBe(HttpStatusCode.NoContent, await edited.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        suggestion["sources"]!.AsArray().ShouldBeEmpty();
+        model.Requests.SelectMany(request => request).ShouldAllBe(message => !message.Text.Contains($"Previous guidance {word}"));
+    }
+
+    [Fact]
     public async Task A_blank_question_is_refused_with_its_code()
     {
         using var staff = await aspire.CreateHostClientAsync("staff");
