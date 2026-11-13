@@ -16,7 +16,7 @@ partial class NotificationsDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261113082647_KeepNotices";
+    public override string LastMigrationId => "20261113090336_ClaimNoticeEmails";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -42,6 +42,10 @@ partial class NotificationsDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("created_at");
 
+                b.Property<DateTimeOffset?>("EmailClaimedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("email_claimed_at");
+
                 b.Property<DateTimeOffset?>("EmailedAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("emailed_at");
@@ -66,6 +70,12 @@ partial class NotificationsDbContextModelSnapshot : ModelSnapshot
                 b.Property<Guid>("TicketId")
                     .HasColumnType("uuid")
                     .HasColumnName("ticket_id");
+
+                b.Property<uint>("xmin")
+                    .IsConcurrencyToken()
+                    .ValueGeneratedOnAddOrUpdate()
+                    .HasColumnType("xid")
+                    .HasColumnName("xmin");
 
                 b.HasKey("Id");
 

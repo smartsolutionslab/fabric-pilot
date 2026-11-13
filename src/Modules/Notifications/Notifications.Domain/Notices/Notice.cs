@@ -8,6 +8,12 @@ namespace FabricPilot.Modules.Notifications.Domain.Notices;
 /// </summary>
 public sealed class Notice : AggregateRoot<NoticeId>
 {
+    /// <summary>
+    /// How long a delivery that claimed the e-mail has to send it before another may: longer than a send takes, and
+    /// shorter than a message's retries last, so a copy retried after a crash still sends.
+    /// </summary>
+    public static readonly TimeSpan EmailClaimLease = TimeSpan.FromSeconds(45);
+
     private Notice(NoticeId id, Guid causingEvent, string recipient, Guid ticketId, string text, DateTimeOffset createdAt)
         : base(id)
     {
@@ -32,6 +38,9 @@ public sealed class Notice : AggregateRoot<NoticeId>
 
     public DateTimeOffset? EmailedAt { get; private set; }
 
+    /// <summary>When a delivery claimed the e-mail to send it; none while no delivery is sending it.</summary>
+    public DateTimeOffset? EmailClaimedAt { get; private set; }
+
     public bool IsEmailed => EmailedAt is not null;
 
     public static Notice OfStatusChange(
@@ -50,6 +59,24 @@ public sealed class Notice : AggregateRoot<NoticeId>
 
         return new Notice(id, causingEvent, recipient, ticketId, $"Your ticket \"{ticketSubject}\" is now {status}.", createdAt);
     }
+
+    /// <summary>
+    /// Claims the e-mail for the delivery about to send it: refused once it was sent, and while another delivery's claim
+    /// is younger than <see cref="EmailClaimLease"/>.
+    /// </summary>
+    public bool TryClaimEmail(DateTimeOffset now)
+    {
+        if (IsEmailed || (EmailClaimedAt is { } claimedAt && now - claimedAt < EmailClaimLease))
+        {
+            return false;
+        }
+
+        EmailClaimedAt = now;
+        return true;
+    }
+
+    /// <summary>Gives the claim back after a send that failed, so the next delivery sends at once.</summary>
+    public void ReleaseEmailClaim() => EmailClaimedAt = null;
 
     public void MarkEmailed(DateTimeOffset emailedAt) => EmailedAt = emailedAt;
 }

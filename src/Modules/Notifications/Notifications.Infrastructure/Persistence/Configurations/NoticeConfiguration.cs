@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FabricPilot.Modules.Notifications.Infrastructure.Persistence.Configurations;
 
-/// <summary>One row per notice; one notice per causing event, which the unique index holds even under a race.</summary>
+/// <summary>One row per notice; one notice per causing event, which the unique index holds even under a race, and saved only over the version read.</summary>
 public sealed class NoticeConfiguration : IEntityTypeConfiguration<Notice>
 {
     /// <summary>Room for a ticket's subject of 200 characters and the sentence around it.</summary>
@@ -26,6 +26,9 @@ public sealed class NoticeConfiguration : IEntityTypeConfiguration<Notice>
         builder.Property(notice => notice.Text).HasColumnName("text").HasMaxLength(MaximumTextLength).IsRequired();
         builder.Property(notice => notice.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(notice => notice.EmailedAt).HasColumnName("emailed_at");
+        builder.Property(notice => notice.EmailClaimedAt).HasColumnName("email_claimed_at");
+        // PostgreSQL's row version: a save over a version another delivery has changed since it was read fails.
+        builder.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
         builder.Ignore(notice => notice.IsEmailed);
         builder.Ignore(notice => notice.DomainEvents);
         builder.HasIndex(notice => notice.CausingEvent).IsUnique();

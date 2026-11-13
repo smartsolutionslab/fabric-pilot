@@ -6,10 +6,11 @@ namespace FabricPilot.Modules.Notifications.Application.Consumers;
 
 /// <summary>
 /// Tells the customer who raised a ticket that its status changed: a notice in the portal and an e-mail, once per event.
-/// The notice is saved before the e-mail is sent and marked e-mailed after, so a redelivered event finds it and sends
-/// nothing, and one whose e-mail failed sends it then. Two copies handled at once meet at the unique index on the causing
-/// event: the second fails, is retried and finds the notice. A second e-mail goes out only if a failure falls between
-/// sending and marking, or a retried copy finds the notice before the first copy marked it.
+/// A delivery claims the e-mail on the notice and saves the claim before sending; the store saves only over the version
+/// it read, so of two copies handled at once one claims and the other fails and is retried, by when the e-mail is sent.
+/// A send that fails gives the claim back; a delivery that dies holding it blocks others for
+/// <see cref="Notice.EmailClaimLease"/>. A second e-mail goes out only if the host dies between sending and marking it
+/// sent.
 /// </summary>
 public sealed class TicketStatusChangedV1Consumer(INoticeStore notices, IEmailSender email, TimeProvider time)
 {
@@ -25,23 +26,39 @@ public sealed class TicketStatusChangedV1Consumer(INoticeStore notices, IEmailSe
         var notice = found.HasValue
             ? found.Value
             : Notice.OfStatusChange(NoticeId.New(), eventIdentifier, customerUserId, ticketId, subject, status, time.GetUtcNow());
-        if (!found.HasValue)
-        {
-            notices.Add(notice);
-            await notices.SaveAsync(cancellationToken);
-        }
-
         if (notice.IsEmailed)
         {
             return;
         }
 
-        await email.SendAsync(
-            new EmailMessage(
-                customerEmail,
-                $"Your ticket \"{subject}\" is now {status}",
-                $"The status of your ticket \"{subject}\" changed from {previousStatus} to {status}.\n\nSee it in the portal."),
-            cancellationToken);
+        if (!notice.TryClaimEmail(time.GetUtcNow()))
+        {
+            // Thrown to be retried: by then the delivery holding the claim has sent the e-mail, or given the claim back.
+            throw new InvalidOperationException($"Another delivery of event {eventIdentifier} is e-mailing its notice.");
+        }
+
+        if (!found.HasValue)
+        {
+            notices.Add(notice);
+        }
+
+        await notices.SaveAsync(cancellationToken);
+        try
+        {
+            await email.SendAsync(
+                new EmailMessage(
+                    customerEmail,
+                    $"Your ticket \"{subject}\" is now {status}",
+                    $"The status of your ticket \"{subject}\" changed from {previousStatus} to {status}.\n\nSee it in the portal."),
+                cancellationToken);
+        }
+        catch
+        {
+            notice.ReleaseEmailClaim();
+            await notices.SaveAsync(CancellationToken.None);
+            throw;
+        }
+
         notice.MarkEmailed(time.GetUtcNow());
         await notices.SaveAsync(cancellationToken);
     }
