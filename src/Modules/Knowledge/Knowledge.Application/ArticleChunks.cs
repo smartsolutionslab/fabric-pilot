@@ -30,6 +30,22 @@ public static partial class ArticleChunks
         return string.Create(CultureInfo.InvariantCulture, $"knowledge/articles/{article.Value}/{position}");
     }
 
+    /// <summary>The article a chunk's key names, or none for a key that is not a chunk's.</summary>
+    public static Option<ArticleId> ArticleOf(string key)
+    {
+        Ensure.That(key).IsNotNull();
+
+        var parts = key.Split('/');
+        if (parts is not ["knowledge", "articles", var article, var position]
+            || !Guid.TryParse(article, CultureInfo.InvariantCulture, out var id)
+            || !int.TryParse(position, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+        {
+            return Option<ArticleId>.None;
+        }
+
+        return Option<ArticleId>.Some(new ArticleId(id));
+    }
+
     public static IReadOnlyList<string> Of(string title, string body)
     {
         Ensure.That(title).IsNotNull();

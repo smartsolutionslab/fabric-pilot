@@ -153,7 +153,7 @@ public class KnowledgeArticlesTests(AspireFixture aspire)
         var word = UniqueWord();
         using var staff = await aspire.CreateHostClientAsync("staff");
         var id = await WriteAsync(staff, $"Busy {word}", $"Text {word}.");
-        using var slowEmbeddings = aspire.Embeddings.Hold(word);
+        using var slowEmbeddings = aspire.Model.Hold(word);
         var publishing = PublishAsync(staff, id);
         await slowEmbeddings.Arrived.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
@@ -182,7 +182,7 @@ public class KnowledgeArticlesTests(AspireFixture aspire)
             articles.Add(await WriteAsync(staff, $"Held {word} {position}", $"Text {word} {position}."));
         }
 
-        using var slowEmbeddings = aspire.Embeddings.Hold(word);
+        using var slowEmbeddings = aspire.Model.Hold(word);
         List<Task<HttpResponseMessage>> held = [.. articles.Take(ArticleLocks.Capacity).Select(id => staff.PostAsync(new Uri($"{Articles}/{id}/publish", UriKind.Relative), null, TestContext.Current.CancellationToken))];
         using (var allHeld = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
         {

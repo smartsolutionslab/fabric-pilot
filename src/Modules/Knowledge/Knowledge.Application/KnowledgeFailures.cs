@@ -17,4 +17,8 @@ public static class KnowledgeFailures
     public static ApiError ArticleNotFound(Guid article) => new ArticleNotFound(article);
 
     public static ApiError ArticleBeingChanged(Guid article) => new ArticleBeingChanged(article);
+
+    public static ApiError InvalidQuestion(int maximumLength) => new InvalidQuestion(maximumLength);
+
+    public static ApiError SuggestionUnreadable() => new SuggestionUnreadable();
 }

@@ -42,17 +42,21 @@ function renderPage() {
   );
 }
 
-test('staff see every tenant’s tickets with their priority and files, read only', { timeout: 20_000 }, () => {
-  renderPage();
+test(
+  'staff see every tenant’s tickets with their priority and files, each subject opening the ticket',
+  { timeout: 20_000 },
+  () => {
+    renderPage();
 
-  expect(screen.getByRole('heading', { name: 'Tickets of every tenant' })).toBeInTheDocument();
-  const row = screen.getByRole('row', { name: /Printer offline/ });
-  expect(within(row).getByText('High')).toBeInTheDocument();
-  expect(within(row).getByText('2')).toBeInTheDocument();
-  expect(screen.getByRole('row', { name: /Password reset/ })).toBeInTheDocument();
-  expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  expect(useGetTicketsTicketsAllTenantsQuery).toHaveBeenCalledWith({ page: 1, pageSize: 20 });
-});
+    expect(screen.getByRole('heading', { name: 'Tickets of every tenant' })).toBeInTheDocument();
+    const row = screen.getByRole('row', { name: /Printer offline/ });
+    expect(within(row).getByText('High')).toBeInTheDocument();
+    expect(within(row).getByText('2')).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /Password reset/ })).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: 'Printer offline' })).toHaveAttribute('href', '/b1');
+    expect(useGetTicketsTicketsAllTenantsQuery).toHaveBeenCalledWith({ page: 1, pageSize: 20 });
+  },
+);
 
 test('a list that cannot be loaded says so', () => {
   vi.mocked(useGetTicketsTicketsAllTenantsQuery).mockReturnValue({

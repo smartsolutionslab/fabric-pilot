@@ -23,6 +23,7 @@
     <ProjectReference Include="../../src/Modules/Knowledge/Knowledge.Infrastructure/Knowledge.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Contracts/Contracts.csproj" />
     <Compile Include="../Fakes/FakeEmbeddingGenerator.cs" Link="Fakes/FakeEmbeddingGenerator.cs" />
+    <Compile Include="../Fakes/FakeChatClient.cs" Link="Fakes/FakeChatClient.cs" />
   </ItemGroup>
 
 </Project>

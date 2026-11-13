@@ -17,7 +17,7 @@ namespace FabricPilot.Modules.Tickets.Api.Endpoints;
 
 /// <summary>
 /// The caller's tenant's tickets: raising one with its files, listing them, reading one and downloading its files; and,
-/// for staff, every tenant's tickets, read only.
+/// for staff, every tenant's tickets and each of them, read only.
 /// </summary>
 public sealed class TicketEndpoints : IEndpoint
 {
@@ -44,6 +44,12 @@ public sealed class TicketEndpoints : IEndpoint
 
         // The same list, every tenant's rows: staff, who belong to no tenant, read it and write nothing.
         tickets.MapGet("/all-tenants", ListAsync)
+            .RequireAuthorization(TicketsPolicyNames.ReadAllTenants)
+            .AcrossTenants();
+
+        // One of them, with its description, for staff to answer: read only, as the list.
+        tickets.MapGet("/all-tenants/{ticketId:guid}", async (Guid ticketId, IDispatcher dispatcher, CancellationToken cancellationToken) =>
+            (await dispatcher.QueryAsync(new GetTicket(ticketId), cancellationToken)).ToHttpResult())
             .RequireAuthorization(TicketsPolicyNames.ReadAllTenants)
             .AcrossTenants();
         tickets.MapGet("/{ticketId:guid}", async (Guid ticketId, IDispatcher dispatcher, CancellationToken cancellationToken) =>

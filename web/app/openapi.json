@@ -375,6 +375,35 @@
         }
       }
     },
+    "/knowledge/suggested-answers": {
+      "post": {
+        "tags": [
+          "Knowledge"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestedAnswerDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/knowledge/articles/{articleId}/publish": {
       "post": {
         "tags": [
@@ -695,6 +724,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedResultOfTicketSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tickets/tickets/all-tenants/{ticketId}": {
+      "get": {
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDto"
                 }
               }
             }
@@ -1264,6 +1323,55 @@
       "Stream": {
         "type": "string",
         "format": "binary"
+      },
+      "SuggestedAnswerDto": {
+        "required": [
+          "drafted",
+          "text",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "drafted": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuggestionSourceDto"
+            }
+          }
+        }
+      },
+      "SuggestionRequest": {
+        "required": [
+          "question"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          }
+        }
+      },
+      "SuggestionSourceDto": {
+        "required": [
+          "articleId",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "articleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
       },
       "TicketDto": {
         "required": [
