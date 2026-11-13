@@ -8,6 +8,9 @@ public static class NotificationsPolicyNames
 {
     public const string Manage = "notifications.manage";
 
+    /// <summary>A customer reads the notices addressed to them in their own tenant.</summary>
+    public const string ReadOwnNotices = "notifications.read-own-notices";
+
     /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
     public const string ReadAllTenants = "notifications.read-all-tenants";
 
