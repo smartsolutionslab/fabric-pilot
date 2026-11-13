@@ -12,7 +12,7 @@ namespace FabricPilot.Modules.Notifications.Tests;
 /// </summary>
 internal sealed class InMemoryNoticeStore : INoticeStore
 {
-    private readonly ITenantContext tenants = new HttpTenantContext(new HttpContextAccessor());
+    private readonly HttpTenantContext tenants = new(new HttpContextAccessor());
 
     private readonly List<Notice> pending = [];
 
