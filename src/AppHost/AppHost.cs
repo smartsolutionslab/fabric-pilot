@@ -71,11 +71,13 @@ var host = builder.AddProject<Projects.Host>("host")
 
 if (mailpit is not null)
 {
-    // The notifications module's e-mail lands in Mailpit too. A deployment gives the host its own SMTP server as the
-    // connection string mail, and its sender as Notifications:SenderAddress.
+    // The notifications module's e-mail lands in Mailpit too, unencrypted: Mailpit offers no TLS, and only this local
+    // catcher is allowed none. A deployment gives the host its own SMTP server as the connection string mail
+    // (smtp:// for STARTTLS, smtps:// for TLS), and its sender as Notifications:SenderAddress.
     var smtp = mailpit.GetEndpoint("smtp");
     host.WithEnvironment("ConnectionStrings__mail", ReferenceExpression.Create($"smtp://{smtp.Property(EndpointProperty.Host)}:{smtp.Property(EndpointProperty.Port)}"))
         .WithEnvironment("Notifications__SenderAddress", "noreply@example.com")
+        .WithEnvironment("Notifications__AllowUnencryptedSmtp", "true")
         .WaitFor(mailpit);
 }
 
