@@ -1,7 +1,7 @@
 import { skipToken } from '@reduxjs/toolkit/query';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { Link, MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { axe } from 'vitest-axe';
 import {
@@ -120,6 +120,38 @@ test('a source article opens beside the draft, so reading it keeps the edits', a
   const source = within(screen.getByRole('list', { name: 'Sources' })).getByRole('link', { name: 'Printer error 42' });
   expect(source).toHaveAttribute('target', '_blank');
   expect(source).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+test('opening another ticket leaves the previous ticket’s draft and sources behind', async () => {
+  const otherId = '019a7b3c-5d2e-7f10-8a4b-3c2d1e0f9a8c';
+  vi.mocked(useGetTicketsTicketsAllTenantsByTicketIdQuery).mockImplementation(
+    (argument) =>
+      ({
+        data:
+          argument !== skipToken && argument.ticketId === otherId
+            ? { ...ticket, id: otherId, subject: 'Password reset' }
+            : ticket,
+        isLoading: false,
+        isError: false,
+      }) as never,
+  );
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={[`/tickets/${ticketId}`]}>
+      <Link to={`/tickets/${otherId}`}>Next ticket</Link>
+      <Routes>
+        <Route path="/tickets/:ticketId" element={<StaffTicketPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Suggest an answer' }));
+  await screen.findByRole('textbox', { name: 'Draft answer' });
+
+  await user.click(screen.getByRole('link', { name: 'Next ticket' }));
+
+  expect(await screen.findByRole('heading', { name: 'Password reset' })).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: 'Draft answer' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('list', { name: 'Sources' })).not.toBeInTheDocument();
 });
 
 test('nothing is sent to the customer: the page offers no way to send the draft', async () => {
