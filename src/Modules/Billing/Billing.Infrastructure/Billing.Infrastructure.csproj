@@ -2,6 +2,7 @@
 
   <!-- PDF generation is hand-written in this repository until the catalog offers it; the owner chose PDFsharp (issue #10). -->
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" VersionOverride="11.0.0" />
     <PackageReference Include="PDFsharp" />
     <!-- PDFsharp 6.2.4 depends on Pkcs 8.0.1, which has known vulnerabilities (NU1902, NU1903); this lifts it. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" />
