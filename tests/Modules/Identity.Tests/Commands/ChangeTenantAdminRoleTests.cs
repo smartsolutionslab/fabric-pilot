@@ -36,7 +36,7 @@ public class ChangeTenantAdminRoleTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.role-not-grantable");
         result.Error.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class ChangeTenantAdminRoleTests
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.user-not-found");
-        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class ChangeTenantAdminRoleTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.tenant-not-found");
         result.Error.Status.ShouldBe(HttpStatusCode.NotFound);
-        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     private static ITenantUserDirectory Existing(params TenantUser[] users)

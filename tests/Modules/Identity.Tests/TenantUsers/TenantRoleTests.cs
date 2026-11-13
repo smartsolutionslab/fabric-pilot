@@ -39,7 +39,7 @@ public class TenantRoleTests
         var role = TenantRole.From(name);
 
         role.IsFailure.ShouldBeTrue();
-        var error = role.Error.ShouldBeOfType<RoleNotGrantable>();
+        var error = role.Error.Value.ShouldBeOfType<RoleNotGrantable>();
         error.Code.ShouldBe("identity.role-not-grantable");
         error.Role.ShouldBe(name);
     }

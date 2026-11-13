@@ -40,7 +40,7 @@ public class ListTenantAdminsTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.tenant-not-found");
         result.Error.Status.ShouldBe(HttpStatusCode.NotFound);
-        await directory.DidNotReceiveWithAnyArgs().ListMembersAsync(default!, default);
+        await directory.DidNotReceiveWithAnyArgs().ListMembersAsync(default!, TestContext.Current.CancellationToken);
     }
 
     private static Task<Result<PagedResult<TenantUserDto>, ApiError>> Handle(ITenantUserDirectory directory, ListTenantAdmins query) =>

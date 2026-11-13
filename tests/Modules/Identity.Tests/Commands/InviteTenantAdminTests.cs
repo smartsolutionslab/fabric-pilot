@@ -45,7 +45,7 @@ public class InviteTenantAdminTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.tenant-not-found");
         result.Error.Status.ShouldBe(HttpStatusCode.NotFound);
-        await directory.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default);
+        await directory.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class InviteTenantAdminTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.user-already-exists");
         result.Error.Status.ShouldBe(HttpStatusCode.Conflict);
-        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]

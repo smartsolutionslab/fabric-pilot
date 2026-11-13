@@ -40,7 +40,7 @@ public class ChangeTenantUserRoleTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.user-not-found");
         result.Error.Status.ShouldBe(HttpStatusCode.NotFound);
-        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class ChangeTenantUserRoleTests
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.user-not-found");
-        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]

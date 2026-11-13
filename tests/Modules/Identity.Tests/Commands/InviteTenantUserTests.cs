@@ -92,8 +92,8 @@ public class InviteTenantUserTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.user-already-exists");
         result.Error.Status.ShouldBe(HttpStatusCode.Conflict);
-        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, default);
-        await directory.DidNotReceiveWithAnyArgs().SendInvitationAsync(default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!, TestContext.Current.CancellationToken);
+        await directory.DidNotReceiveWithAnyArgs().SendInvitationAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class InviteTenantUserTests
 
         (await Should.ThrowAsync<HttpRequestException>(handle)).Message.ShouldBe("Keycloak answered 503.");
         await directory.Received(1).DeleteAsync(created, Arg.Any<CancellationToken>());
-        await directory.DidNotReceiveWithAnyArgs().SendInvitationAsync(default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SendInvitationAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class InviteTenantUserTests
         result.IsSuccess.ShouldBeTrue();
         result.Value.ShouldBe(created.Value);
         await directory.Received(1).SetRoleAsync(created, TenantRole.CustomerUser, Arg.Any<CancellationToken>());
-        await directory.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
+        await directory.DidNotReceiveWithAnyArgs().DeleteAsync(default!, TestContext.Current.CancellationToken);
     }
 
     private Task<Result<Guid, ApiError>> Handle(string? tenantId, InviteTenantUser command) =>

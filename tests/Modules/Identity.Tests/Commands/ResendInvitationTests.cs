@@ -33,7 +33,7 @@ public class ResendInvitationTests
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("identity.user-not-found");
-        await directory.DidNotReceiveWithAnyArgs().SendInvitationAsync(default!, default);
+        await directory.DidNotReceiveWithAnyArgs().SendInvitationAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]

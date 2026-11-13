@@ -28,7 +28,7 @@ public class NewTenantUserTests
         var user = NewTenantUser.Create(email, "New", "User");
 
         user.IsFailure.ShouldBeTrue();
-        user.Error.ShouldBeOfType<InvalidEmail>().Code.ShouldBe("identity.invalid-email");
+        user.Error.Value.ShouldBeOfType<InvalidEmail>().Code.ShouldBe("identity.invalid-email");
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class NewTenantUserTests
         var user = NewTenantUser.Create(email, "New", "User");
 
         user.IsFailure.ShouldBeTrue();
-        user.Error.ShouldBeOfType<InvalidEmail>();
+        user.Error.Value.ShouldBeOfType<InvalidEmail>();
     }
 
     [Theory]
@@ -52,7 +52,7 @@ public class NewTenantUserTests
         var user = NewTenantUser.Create("new.user@example.com", firstName, lastName);
 
         user.IsFailure.ShouldBeTrue();
-        var error = user.Error.ShouldBeOfType<InvalidName>();
+        var error = user.Error.Value.ShouldBeOfType<InvalidName>();
         error.Code.ShouldBe("identity.invalid-name");
         error.Maximum.ShouldBe(NewTenantUser.MaximumLength);
     }
@@ -63,6 +63,6 @@ public class NewTenantUserTests
         var user = NewTenantUser.Create("new.user@example.com", new string('a', NewTenantUser.MaximumLength + 1), "User");
 
         user.IsFailure.ShouldBeTrue();
-        user.Error.ShouldBeOfType<InvalidName>();
+        user.Error.Value.ShouldBeOfType<InvalidName>();
     }
 }
