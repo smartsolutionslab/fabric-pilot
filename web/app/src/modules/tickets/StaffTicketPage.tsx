@@ -53,7 +53,8 @@ export function StaffTicketPage() {
           ))}
         </ul>
       )}
-      <SuggestedAnswer question={`${ticket.subject}\n\n${ticket.description}`} />
+      {/* Keyed by the ticket, so another ticket starts without this one's draft. */}
+      <SuggestedAnswer key={ticket.id} question={`${ticket.subject}\n\n${ticket.description}`} />
     </main>
   );
 }

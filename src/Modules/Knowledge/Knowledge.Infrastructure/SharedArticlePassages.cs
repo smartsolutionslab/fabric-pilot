@@ -7,27 +7,15 @@ using Microsoft.EntityFrameworkCore;
 namespace FabricPilot.Modules.Knowledge.Infrastructure;
 
 /// <summary>
-/// The nearest chunks in the module's <c>shared_embeddings</c> table, each with its article's title as the articles table
-/// holds it now. A chunk whose key names no article, an article that is not published (any more), or one whose current
-/// text is not indexed yet, is left out: the index is written after the article, so it can hold text the article no
-/// longer says, for good when indexing failed.
+/// The nearest chunks in the module's <c>shared_embeddings</c> table that the articles, as the table holds them now,
+/// still say (<see cref="CurrentPassages"/>).
 /// </summary>
 public sealed class SharedArticlePassages(SharedVectorIndex<KnowledgeDbContext> index, KnowledgeDbContext context) : IArticlePassages
 {
-    public async Task<IReadOnlyList<ArticlePassage>> NearestAsync(string question, int count, CancellationToken cancellationToken)
-    {
-        var found = await index.SearchAsync(question, count, cancellationToken);
-        List<(ArticleId Article, string Text)> chunks = [.. found
-            .Select(passage => (Article: ArticleChunks.ArticleOf(passage.Key), passage.Text))
-            .Where(chunk => chunk.Article.HasValue)
-            .Select(chunk => (chunk.Article.Value, chunk.Text))];
-        List<ArticleId> ids = [.. chunks.Select(chunk => chunk.Article).Distinct()];
-        var titles = await context.Set<Article>().AsNoTracking().Published()
-            .Where(article => !article.NeedsIndexing && ids.Contains(article.Id))
-            .ToDictionaryAsync(article => article.Id, article => article.Title, cancellationToken);
-
-        return [.. chunks
-            .Where(chunk => titles.ContainsKey(chunk.Article))
-            .Select(chunk => new ArticlePassage(chunk.Article, titles[chunk.Article], chunk.Text))];
-    }
+    public Task<IReadOnlyList<ArticlePassage>> NearestAsync(string question, int count, CancellationToken cancellationToken) =>
+        CurrentPassages.NearestAsync(
+            async (asked, cancellation) => [.. (await index.SearchAsync(question, asked, cancellation)).Select(passage => new IndexedChunk(passage.Key, passage.Text))],
+            async (ids, cancellation) => await context.Set<Article>().AsNoTracking().Where(article => ids.Contains(article.Id)).ToListAsync(cancellation),
+            count,
+            cancellationToken);
 }
