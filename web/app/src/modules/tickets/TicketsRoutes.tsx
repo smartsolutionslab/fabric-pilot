@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router';
 import { RequirePermission } from '@/auth/RequirePermission';
 import { AllTenantsTicketsPage } from './AllTenantsTicketsPage';
 import { RaiseTicketPage } from './RaiseTicketPage';
+import { StaffTicketPage } from './StaffTicketPage';
 import { TicketPage } from './TicketPage';
 import { TicketsAccessDenied } from './TicketsAccessDenied';
 import { TicketsPage } from './TicketsPage';
@@ -38,8 +39,16 @@ export function TicketsRoutes() {
       <Route
         path=":ticketId"
         element={
-          <RequirePermission role="customer-user" fallback={denied}>
-            <TicketPage />
+          // Staff read a ticket across tenants, with a suggested answer; a customer reads their own tenant's.
+          <RequirePermission
+            role="staff"
+            fallback={
+              <RequirePermission role="customer-user" fallback={denied}>
+                <TicketPage />
+              </RequirePermission>
+            }
+          >
+            <StaffTicketPage />
           </RequirePermission>
         }
       />
