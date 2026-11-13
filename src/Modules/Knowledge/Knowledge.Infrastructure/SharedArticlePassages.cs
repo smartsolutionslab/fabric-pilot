@@ -8,8 +8,9 @@ namespace FabricPilot.Modules.Knowledge.Infrastructure;
 
 /// <summary>
 /// The nearest chunks in the module's <c>shared_embeddings</c> table, each with its article's title as the articles table
-/// holds it now. A chunk whose key names no article, or an article that is not published (any more), is left out: the
-/// index is written after the article, so it can briefly hold what the table no longer publishes.
+/// holds it now. A chunk whose key names no article, an article that is not published (any more), or one whose current
+/// text is not indexed yet, is left out: the index is written after the article, so it can hold text the article no
+/// longer says, for good when indexing failed.
 /// </summary>
 public sealed class SharedArticlePassages(SharedVectorIndex<KnowledgeDbContext> index, KnowledgeDbContext context) : IArticlePassages
 {
@@ -22,7 +23,7 @@ public sealed class SharedArticlePassages(SharedVectorIndex<KnowledgeDbContext> 
             .Select(chunk => (chunk.Article.Value, chunk.Text))];
         List<ArticleId> ids = [.. chunks.Select(chunk => chunk.Article).Distinct()];
         var titles = await context.Set<Article>().AsNoTracking().Published()
-            .Where(article => ids.Contains(article.Id))
+            .Where(article => !article.NeedsIndexing && ids.Contains(article.Id))
             .ToDictionaryAsync(article => article.Id, article => article.Title, cancellationToken);
 
         return [.. chunks

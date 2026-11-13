@@ -70,7 +70,13 @@ export function SuggestedAnswer({ question }: Props) {
           <ul aria-labelledby="sources" className="list-disc pl-5">
             {suggestion.sources.map((source) => (
               <li key={source.articleId}>
-                <Link to={`/knowledge/${source.articleId}`} className="underline">
+                {/* A new tab: leaving this page would unmount the editor and lose the draft. */}
+                <Link
+                  to={`/knowledge/${source.articleId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
                   {source.title}
                 </Link>
               </li>
