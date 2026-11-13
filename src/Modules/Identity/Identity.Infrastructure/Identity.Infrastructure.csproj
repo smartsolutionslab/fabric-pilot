@@ -1,2 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- RetryEveryMethod(): the admin token's mint opts back into retrying its POST. -->
+  <ItemGroup>
+    <ProjectReference Include="../../../ServiceDefaults/ServiceDefaults.csproj" />
+  </ItemGroup>
+
 </Project>

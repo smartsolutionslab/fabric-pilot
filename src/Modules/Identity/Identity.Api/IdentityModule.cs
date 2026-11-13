@@ -9,7 +9,7 @@ namespace FabricPilot.Modules.Identity.Api;
 public sealed class IdentityModule : IModule
 {
     public void AddServices(IServiceCollection services, IConfiguration configuration) =>
-        services.AddModuleInfrastructure<IdentityModule>(configuration);
+        services.AddModuleInfrastructure<IdentityModule>(configuration).AddIdentityKeycloak(configuration);
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup("/identity").MapModuleEndpoints<IdentityModule>();

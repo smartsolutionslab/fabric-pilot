@@ -8,6 +8,12 @@ public static class IdentityPolicyNames
 {
     public const string Manage = "identity.manage";
 
+    /// <summary>A customer admin manages their own tenant's users: lists, invites, changes their roles.</summary>
+    public const string ManageUsers = "identity.manage-users";
+
+    /// <summary>Staff manage the admins of the tenant an endpoint's route names; not an <c>AcrossTenants()</c> endpoint (docs/adr).</summary>
+    public const string ManageTenantAdmins = "identity.manage-tenant-admins";
+
     /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
     public const string ReadAllTenants = "identity.read-all-tenants";
 

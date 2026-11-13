@@ -16,6 +16,8 @@ public sealed class IdentityPolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(IdentityPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        policies.AddPolicy(IdentityPolicyNames.ManageUsers, policy => policy.RequireRole("customer-admin"));
+        policies.AddPolicy(IdentityPolicyNames.ManageTenantAdmins, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(IdentityPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(IdentityPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
     }
