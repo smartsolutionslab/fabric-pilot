@@ -8,6 +8,7 @@ namespace FabricPilot.Modules.Notifications.Application.Consumers;
 /// Tells the customer who raised a ticket that its status changed: a notice in the portal and an e-mail, once per event.
 /// A delivery claims the e-mail on the notice and saves the claim before sending; the store saves only over the version
 /// it read, so of two copies handled at once one claims and the other fails and is retried, by when the e-mail is sent.
+/// A send still running <see cref="Notice.EmailSendDeadline"/> after the claim is cancelled, well inside the claim's lease.
 /// A send that fails gives the claim back; a delivery that dies holding it blocks others for
 /// <see cref="Notice.EmailClaimLease"/>. A second e-mail goes out only if the host dies between sending and marking it
 /// sent.
@@ -31,7 +32,8 @@ public sealed class TicketStatusChangedV1Consumer(INoticeStore notices, IEmailSe
             return;
         }
 
-        if (!notice.TryClaimEmail(time.GetUtcNow()))
+        var claimedAt = time.GetUtcNow();
+        if (!notice.TryClaimEmail(claimedAt))
         {
             // Thrown to be retried: by then the delivery holding the claim has sent the e-mail, or given the claim back.
             throw new InvalidOperationException($"Another delivery of event {eventIdentifier} is e-mailing its notice.");
@@ -43,6 +45,9 @@ public sealed class TicketStatusChangedV1Consumer(INoticeStore notices, IEmailSe
         }
 
         await notices.SaveAsync(cancellationToken);
+        var left = claimedAt + Notice.EmailSendDeadline - time.GetUtcNow();
+        using var deadline = new CancellationTokenSource(left > TimeSpan.Zero ? left : TimeSpan.Zero, time);
+        using var sending = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         try
         {
             await email.SendAsync(
@@ -50,7 +55,7 @@ public sealed class TicketStatusChangedV1Consumer(INoticeStore notices, IEmailSe
                     customerEmail,
                     $"Your ticket \"{subject}\" is now {status}",
                     $"The status of your ticket \"{subject}\" changed from {previousStatus} to {status}.\n\nSee it in the portal."),
-                cancellationToken);
+                sending.Token);
         }
         catch
         {

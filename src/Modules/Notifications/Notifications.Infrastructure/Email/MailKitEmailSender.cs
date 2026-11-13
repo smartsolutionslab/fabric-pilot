@@ -21,7 +21,7 @@ public sealed class MailKitEmailSender(SmtpSettings settings) : IEmailSender
         email.Subject = message.Subject;
         email.Body = new TextPart("plain") { Text = message.Body };
 
-        // Shorter than a claim's lease, so a send that hangs fails before another delivery may send the same e-mail.
+        // Per network operation; the caller's token bounds the whole send.
         using var client = new SmtpClient { Timeout = (int)TimeSpan.FromSeconds(30).TotalMilliseconds };
         await client.ConnectAsync(settings.Host, settings.Port, settings.Security, cancellationToken);
         await client.SendAsync(email, cancellationToken);

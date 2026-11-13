@@ -14,6 +14,12 @@ public sealed class Notice : AggregateRoot<NoticeId>
     /// </summary>
     public static readonly TimeSpan EmailClaimLease = TimeSpan.FromSeconds(45);
 
+    /// <summary>
+    /// How long after its claim a delivery may still be sending: a send still running then is cancelled, leaving the rest
+    /// of the lease to give the claim back or mark the notice e-mailed before another delivery may claim it.
+    /// </summary>
+    public static readonly TimeSpan EmailSendDeadline = TimeSpan.FromSeconds(30);
+
     private Notice(NoticeId id, Guid causingEvent, string recipient, Guid ticketId, string text, DateTimeOffset createdAt)
         : base(id)
     {
