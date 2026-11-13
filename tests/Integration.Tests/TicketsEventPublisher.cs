@@ -23,6 +23,8 @@ public sealed class TicketsEventPublisher : IAsyncDisposable
         builder.Services.AddWolverine(options =>
         {
             options.ServiceName = "integration-tests";
+            // Wolverine compiles its routing code at startup, as the host's does; the core package no longer ships the compiler.
+            options.UseRuntimeCompilation();
             options.Discovery.DisableConventionalDiscovery();
             options.UseRabbitMq(new Uri(brokerConnectionString)).AutoProvision().UseConventionalRouting();
         });

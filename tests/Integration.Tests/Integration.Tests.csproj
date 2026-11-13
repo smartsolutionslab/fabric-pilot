@@ -10,6 +10,7 @@
     <PackageReference Include="PdfPig" />
     <!-- Publishes tickets' integration events onto the AppHost's broker in Wolverine's own format: no use case publishes them yet. -->
     <PackageReference Include="WolverineFx.RabbitMQ" />
+    <PackageReference Include="WolverineFx.RuntimeCompilation" />
   </ItemGroup>
 
   <ItemGroup>
