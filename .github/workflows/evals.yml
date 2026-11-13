@@ -3,8 +3,20 @@ name: evals
 # The evals score the project's LLM use cases with its own model (docs/adr, tests/Evals). They are off by default: a
 # run costs money and sends the examples and the answers to the provider. Run them by hand from the Actions tab, or set
 # the repository variable EVALS_SCHEDULED to true for the weekly run. The regular CI never runs them.
+# A run by hand chooses the variant: normal, the use cases' own prompts, or degraded, where the suggested answers get a
+# careless instruction (tests/Evals/EvalVariants.cs) so the run shows the gate failing (docs/adr/0052). A scheduled run
+# is always normal.
+run-name: evals (${{ inputs.variant || 'normal' }})
 on:
   workflow_dispatch:
+    inputs:
+      variant:
+        description: "normal: the use cases' own prompts. degraded: a careless suggested-answer prompt, which must fail the gate."
+        type: choice
+        default: normal
+        options:
+          - normal
+          - degraded
   schedule:
     - cron: "17 5 * * 1"
 
@@ -18,10 +30,13 @@ jobs:
   evals:
     if: github.event_name != 'schedule' || vars.EVALS_SCHEDULED == 'true'
     runs-on: ubuntu-latest
-    # The key is the repository secret named after the provider, passed to the AppHost's parameter.
+    # The key is the repository secret named after the provider, passed to the AppHost's parameter. The endpoint and the
+    # deployment are repository variables; a deployment left unset takes the AppHost's default.
     env:
       Parameters__azure-openai-api-key: ${{ secrets.AZURE_OPENAI_API_KEY }}
       Parameters__azure-openai-endpoint: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+      Parameters__azure-openai-deployment: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
+      EVALS_VARIANT: ${{ inputs.variant || 'normal' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
@@ -39,5 +54,5 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ !cancelled() && hashFiles('TestResults/evals/**') != '' }}
         with:
-          name: evals
+          name: evals-${{ inputs.variant || 'normal' }}
           path: TestResults/evals
