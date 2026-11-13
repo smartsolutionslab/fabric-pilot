@@ -42,4 +42,35 @@ public class NoticeTests
     {
         Should.Throw<ArgumentException>(() => Notice.OfStatusChange(NoticeId.New(), Guid.CreateVersion7(), recipient, Guid.CreateVersion7(), "Printer offline", "Resolved", CreatedAt));
     }
+
+    [Fact]
+    public void An_unemailed_notice_is_claimed_for_e_mail_once_until_the_claim_lapses()
+    {
+        var notice = Notice.OfStatusChange(NoticeId.New(), Guid.CreateVersion7(), "customer-1", Guid.CreateVersion7(), "Printer offline", "Resolved", CreatedAt);
+
+        notice.TryClaimEmail(CreatedAt).ShouldBeTrue();
+        notice.TryClaimEmail(CreatedAt.Add(Notice.EmailClaimLease).AddTicks(-1)).ShouldBeFalse();
+        notice.TryClaimEmail(CreatedAt.Add(Notice.EmailClaimLease)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void A_released_claim_lets_the_next_delivery_claim_at_once()
+    {
+        var notice = Notice.OfStatusChange(NoticeId.New(), Guid.CreateVersion7(), "customer-1", Guid.CreateVersion7(), "Printer offline", "Resolved", CreatedAt);
+        notice.TryClaimEmail(CreatedAt).ShouldBeTrue();
+
+        notice.ReleaseEmailClaim();
+
+        notice.TryClaimEmail(CreatedAt).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void An_emailed_notice_is_never_claimed_again()
+    {
+        var notice = Notice.OfStatusChange(NoticeId.New(), Guid.CreateVersion7(), "customer-1", Guid.CreateVersion7(), "Printer offline", "Resolved", CreatedAt);
+        notice.TryClaimEmail(CreatedAt).ShouldBeTrue();
+        notice.MarkEmailed(CreatedAt);
+
+        notice.TryClaimEmail(CreatedAt.AddDays(1)).ShouldBeFalse();
+    }
 }

@@ -9,7 +9,10 @@ internal sealed class RecordingEmailSender : IEmailSender
 
     public bool FailsNextSend { get; set; }
 
-    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
+    /// <summary>Runs once, in the middle of the next send: another delivery arriving meanwhile.</summary>
+    public Func<Task>? WhileSending { get; set; }
+
+    public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
     {
         if (FailsNextSend)
         {
@@ -17,7 +20,12 @@ internal sealed class RecordingEmailSender : IEmailSender
             throw new IOException("The mail server is unreachable.");
         }
 
+        if (WhileSending is { } meanwhile)
+        {
+            WhileSending = null;
+            await meanwhile();
+        }
+
         Sent.Add(message);
-        return Task.CompletedTask;
     }
 }

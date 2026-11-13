@@ -66,6 +66,22 @@ public class TicketStatusChangedV1ConsumerTests
     }
 
     [Fact]
+    public async Task A_copy_delivered_while_the_first_is_still_sending_sends_nothing_and_is_retried()
+    {
+        var changed = StatusChanged("tenant-a");
+        Exception? overlapping = null;
+        email.WhileSending = async () => overlapping = await Record.ExceptionAsync(() => Consumer().HandleAsync(changed, TestContext.Current.CancellationToken));
+
+        await Consumer().HandleAsync(changed, TestContext.Current.CancellationToken);
+
+        overlapping.ShouldBeOfType<InvalidOperationException>();
+        email.Sent.ShouldHaveSingleItem();
+        await Consumer().HandleAsync(changed, TestContext.Current.CancellationToken);
+        email.Sent.ShouldHaveSingleItem();
+        notices.Saved.ShouldHaveSingleItem();
+    }
+
+    [Fact]
     public async Task Two_status_changes_of_one_ticket_are_two_notices_and_two_emails()
     {
         await Consumer().HandleAsync(StatusChanged("tenant-a"), TestContext.Current.CancellationToken);
