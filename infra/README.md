@@ -95,8 +95,9 @@ All commands run from the repository root.
    The password goes into Key Vault as `smtp-password`, and the host reads it from there (`Notifications:SmtpPassword`)
    with its user name (`Notifications:SmtpUserName`); set both or neither, or the host refuses to send. azd keeps the
    value in `.azure/<environment>/.env` on your machine, which is never committed (`.gitignore`). A wrong user name or
-   password fails each notification's e-mail like an unreachable server: the host retries it for about a minute, then
-   dead-letters it (`wolverine.wolverine_dead_letters`), and the portal notice is still shown. To change the password
+   password fails each notification's e-mail like an unreachable server: the host logs `AuthenticationException`,
+   retries it for about a minute, then moves it to the broker's queue `wolverine-dead-letter-queue`; the portal notice
+   is still shown. To change the password
    later: `azd env set SMTP_PASSWORD '<new password>'`, `azd provision`, then restart the host as under "Later".
 
    `TENANTS` is the host's `Tenancy:Tenants`: each name needs the Keycloak group `/tenants/<name>`, which step 6
