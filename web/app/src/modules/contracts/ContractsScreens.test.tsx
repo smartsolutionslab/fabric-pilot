@@ -10,8 +10,6 @@ vi.mock('@/api/generated', () => ({
   useGetContractsContractsUpForRenewalQuery: vi.fn(),
   useGetTenantsQuery: () => ({ data: { items: ['tenant-a'], totalCount: 1, page: 1, pageSize: 100 }, isError: false }),
   usePostContractsContractsByTenantMutation: () => [vi.fn(), { isLoading: false }],
-  // The module's permission probe refuses, as it does every caller without its permission.
-  useGetContractsPermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
 }));
 vi.mock('react-oidc-context', () => ({ useAuth: vi.fn() }));
 

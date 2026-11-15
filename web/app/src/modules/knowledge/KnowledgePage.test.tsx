@@ -7,11 +7,7 @@ import { axe } from 'vitest-axe';
 import { useGetKnowledgeArticlesQuery } from '@/api/generated';
 import { KnowledgePage } from './KnowledgePage';
 
-vi.mock('@/api/generated', () => ({
-  useGetKnowledgeArticlesQuery: vi.fn(),
-  // The module's permission probe refuses, as it does every caller without its permission.
-  useGetKnowledgePermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
-}));
+vi.mock('@/api/generated', () => ({ useGetKnowledgeArticlesQuery: vi.fn() }));
 vi.mock('react-oidc-context', () => ({ useAuth: vi.fn() }));
 
 const page = {

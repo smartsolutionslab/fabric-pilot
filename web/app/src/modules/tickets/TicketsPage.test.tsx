@@ -6,11 +6,7 @@ import { axe } from 'vitest-axe';
 import { useGetTicketsTicketsQuery } from '@/api/generated';
 import { TicketsPage } from './TicketsPage';
 
-vi.mock('@/api/generated', () => ({
-  useGetTicketsTicketsQuery: vi.fn(),
-  // The module's permission probe refuses, as it does every caller without its permission.
-  useGetTicketsPermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
-}));
+vi.mock('@/api/generated', () => ({ useGetTicketsTicketsQuery: vi.fn() }));
 
 const page = {
   items: [

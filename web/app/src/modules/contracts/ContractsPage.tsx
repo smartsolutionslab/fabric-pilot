@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { type ContractSummaryDto, useGetContractsContractsQuery } from '@/api/generated';
 import { DataTable } from '@/components/ui/data-table';
 import { columnsOf } from '@/components/ui/data-table-columns';
-import { useCanManage } from './useCanManage';
 
 const pageSize = 20;
 const none: ContractSummaryDto[] = [];
@@ -18,15 +17,12 @@ const columns = contracts.columns([
 
 /** The customer's tenant's contracts, the next to end first. */
 export function ContractsPage() {
-  const permission = useCanManage();
   const [page, setPage] = useState(1);
   const { data, isError } = useGetContractsContractsQuery({ page, pageSize });
 
   return (
     <main className="flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-semibold">Contracts</h1>
-      {permission === 'granted' && <h2>Manage</h2>}
-      {permission === 'failed' && <p role="alert">Permissions for contracts could not be loaded.</p>}
       {isError ? <p role="alert">The contracts could not be loaded.</p> : null}
       <DataTable
         columns={columns}

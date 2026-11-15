@@ -9,8 +9,6 @@ import { BillingPage } from './BillingPage';
 vi.mock('@/api/generated', () => ({
   useGetBillingInvoicesQuery: vi.fn(),
   useLazyGetBillingInvoicesByInvoiceIdPdfQuery: vi.fn(),
-  // The module's permission probe refuses, as it does every caller without its permission.
-  useGetBillingPermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
 }));
 
 const page = {
@@ -75,6 +73,12 @@ test(
     expect(useGetBillingInvoicesQuery).toHaveBeenCalledWith({ page: 1, pageSize: 20 });
   },
 );
+
+test('the page is headed Invoices, what the customer comes to it for', () => {
+  renderPage();
+
+  expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName('Invoices');
+});
 
 test('downloading an invoice saves its PDF under the invoice number', async () => {
   const user = userEvent.setup();

@@ -1,6 +1,6 @@
 # Written by fabric. These choices are fixed for this project (ADR-0001 of the generator).
 fabric: 1
-generator: 0.4.0
+generator: 0.5.0
 catalog: sha256:b2748ab94d729d8ad161b2e8d1d670698c5d16d7957ac8760ac667b75143f6b7
 name: fabric-pilot
 profile: saas-ai-react

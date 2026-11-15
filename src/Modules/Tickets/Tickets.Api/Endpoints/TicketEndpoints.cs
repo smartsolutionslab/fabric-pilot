@@ -116,12 +116,8 @@ public sealed class TicketEndpoints : IEndpoint
         return (await dispatcher.QueryAsync(listTriageTickets, cancellationToken)).ToHttpResult();
     }
 
-    /// <summary>
-    /// The handler runs in the route's tenant (<c>ForTenant()</c>, which checked it), so the command does not carry it;
-    /// <paramref name="tenant"/> is bound only for the OpenAPI document and the generated client to name the route's parameter.
-    /// </summary>
+    /// <summary>The handler runs in the route's tenant (<c>ForTenant()</c>, which checked it), so the command does not carry it.</summary>
     private static async Task<Results<NoContent, ProblemHttpResult>> ChangeStatusAsync(
-        string tenant,
         Guid ticketId,
         TicketStatusChange change,
         IDispatcher dispatcher,
@@ -135,7 +131,6 @@ public sealed class TicketEndpoints : IEndpoint
 
     /// <summary>In the route's tenant, as <see cref="ChangeStatusAsync"/>.</summary>
     private static async Task<Results<NoContent, ProblemHttpResult>> AssignAsync(
-        string tenant,
         Guid ticketId,
         TicketAssignment assignment,
         IDispatcher dispatcher,

@@ -15,7 +15,4 @@ export const examples: Record<string, unknown> = {
     page: 1,
     pageSize: 20,
   },
-  useGetNotificationsPermissionsManageQuery: {
-    name: 'notifications.manage',
-  },
 };
