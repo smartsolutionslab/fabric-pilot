@@ -17,7 +17,4 @@ export const examples: Record<string, unknown> = {
     page: 1,
     pageSize: 20,
   },
-  useGetBillingPermissionsManageQuery: {
-    name: 'billing.manage',
-  },
 };

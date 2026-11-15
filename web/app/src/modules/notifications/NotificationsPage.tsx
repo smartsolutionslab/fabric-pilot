@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import { type NoticeDto, useGetNotificationsNoticesQuery } from '@/api/generated';
 import { DataTable } from '@/components/ui/data-table';
 import { columnsOf } from '@/components/ui/data-table-columns';
-import { useCanManage } from './useCanManage';
 
 const pageSize = 20;
 // The profile chose no realtime transport (frontend.realtime: none), so a new notice arrives by asking again.
@@ -21,15 +20,12 @@ const columns = notices.columns([
 
 /** The signed-in customer's notices, newest first; a new one shows up without a reload. */
 export function NotificationsPage() {
-  const permission = useCanManage();
   const [page, setPage] = useState(1);
   const { data, isError } = useGetNotificationsNoticesQuery({ page, pageSize }, { pollingInterval });
 
   return (
     <main className="flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-semibold">Notifications</h1>
-      {permission === 'granted' && <h2>Manage</h2>}
-      {permission === 'failed' && <p role="alert">Permissions for notifications could not be loaded.</p>}
       {isError ? <p role="alert">The notifications could not be loaded.</p> : null}
       {data?.items.length === 0 ? <p className="text-muted-foreground">No notifications yet.</p> : null}
       <DataTable

@@ -5,11 +5,7 @@ import { axe } from 'vitest-axe';
 import { useGetNotificationsNoticesQuery } from '@/api/generated';
 import { NotificationsPage } from './NotificationsPage';
 
-vi.mock('@/api/generated', () => ({
-  useGetNotificationsNoticesQuery: vi.fn(),
-  // The module's permission probe refuses, as it does every caller without its permission.
-  useGetNotificationsPermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
-}));
+vi.mock('@/api/generated', () => ({ useGetNotificationsNoticesQuery: vi.fn() }));
 
 const page = {
   items: [

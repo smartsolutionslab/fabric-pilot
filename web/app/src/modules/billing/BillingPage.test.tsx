@@ -9,8 +9,6 @@ import { BillingPage } from './BillingPage';
 vi.mock('@/api/generated', () => ({
   useGetBillingInvoicesQuery: vi.fn(),
   useLazyGetBillingInvoicesByInvoiceIdPdfQuery: vi.fn(),
-  // The module's permission probe refuses, as it does every caller without its permission.
-  useGetBillingPermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
 }));
 
 const page = {
