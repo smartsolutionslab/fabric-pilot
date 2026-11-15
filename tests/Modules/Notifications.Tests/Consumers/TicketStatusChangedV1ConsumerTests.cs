@@ -28,14 +28,44 @@ public class TicketStatusChangedV1ConsumerTests
         notice.Recipient.ShouldBe("customer-1");
         notice.TicketId.ShouldBe(changed.TicketId);
         notice.CausingEvent.ShouldBe(changed.Metadata.EventIdentifier);
-        notice.Text.ShouldBe("Your ticket \"Printer offline\" is now Resolved.");
+        notice.Text.ShouldBe("Your ticket \"Printer offline\" is now resolved.");
         notice.CreatedAt.ShouldBe(Now);
         notice.EmailedAt.ShouldBe(Now);
         var sent = email.Sent.ShouldHaveSingleItem();
         sent.To.ShouldBe("customer-1@example.com");
-        sent.Subject.ShouldBe("Your ticket \"Printer offline\" is now Resolved");
+        sent.Subject.ShouldBe("Your ticket \"Printer offline\" is now resolved");
         sent.Body.ShouldContain("Printer offline");
-        sent.Body.ShouldContain("from Open to Resolved");
+        sent.Body.ShouldContain("from open to resolved");
+    }
+
+    [Theory]
+    [InlineData("Open", "open")]
+    [InlineData("InProgress", "in progress")]
+    [InlineData("Resolved", "resolved")]
+    [InlineData("Closed", "closed")]
+    public async Task The_notice_and_the_email_name_each_status_in_words_a_customer_reads(string status, string words)
+    {
+        var changed = StatusChanged("tenant-a") with { PreviousStatus = status, Status = status };
+
+        await Consumer().HandleAsync(changed, TestContext.Current.CancellationToken);
+
+        notices.Saved.ShouldHaveSingleItem().Notice.Text.ShouldBe($"Your ticket \"Printer offline\" is now {words}.");
+        var sent = email.Sent.ShouldHaveSingleItem();
+        sent.Subject.ShouldBe($"Your ticket \"Printer offline\" is now {words}");
+        sent.Body.ShouldContain($"from {words} to {words}.");
+        sent.Body.ShouldNotContain("InProgress");
+    }
+
+    [Fact]
+    public async Task A_status_the_notifications_module_has_no_words_for_fails_and_tells_no_one()
+    {
+        var changed = StatusChanged("tenant-a") with { Status = "WaitingOnCustomer" };
+
+        var failure = await Should.ThrowAsync<InvalidOperationException>(() => Consumer().HandleAsync(changed, TestContext.Current.CancellationToken));
+
+        failure.Message.ShouldContain("WaitingOnCustomer");
+        notices.Saved.ShouldBeEmpty();
+        email.Sent.ShouldBeEmpty();
     }
 
     [Fact]
