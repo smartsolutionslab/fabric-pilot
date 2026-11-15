@@ -10,6 +10,9 @@ namespace FabricPilot.Modules.Contracts.Infrastructure;
 /// <summary>Every read is filtered to the current tenant by the DbContext's query filter.</summary>
 public sealed class ContractStore(ContractsDbContext context) : IContractStore
 {
+    /// <summary>Saving stamps the row with the current tenant.</summary>
+    public void Add(Contract contract) => context.Add(contract);
+
     public async Task<PagedResult<ContractSummaryDto>> ListAsync(Sorting<ContractSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken)
     {
         Ensure.That(sorting).IsNotNull();
