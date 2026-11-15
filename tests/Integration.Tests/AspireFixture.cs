@@ -14,25 +14,15 @@ public sealed class AspireFixture : IAsyncLifetime
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(5);
 
-    private readonly FakeEmbeddingsServer embeddings = new();
-
-    private readonly FakeModelServer model;
-
     private DistributedApplication? app;
 
-    public AspireFixture()
-    {
-        model = new FakeModelServer(embeddings.Endpoint);
-    }
+    private readonly FakeEmbeddingsServer embeddings = new();
 
     /// <summary>
     /// The host's model, embeddings and chat on one endpoint: a stand-in on this machine, which a test can hold an
     /// embeddings answer back from and give a chat answer.
     /// </summary>
     public FakeEmbeddingsServer Embeddings => embeddings;
-
-    /// <summary>The host's chat model: a stand-in a test gives its answers; it hands every other request to <see cref="Embeddings"/>.</summary>
-    public FakeModelServer Model => model;
 
     public DistributedApplication App => app ?? throw new InvalidOperationException("The application has not started.");
 
@@ -50,12 +40,13 @@ public sealed class AspireFixture : IAsyncLifetime
             }
         }
 
-        // A key-shaped value Azure does not accept: the integration tests never call the model.
+        // A key-shaped value Azure does not accept: the integration tests never call the model. The endpoint is the fixture's
+        // embeddings stand-in, given below, which answers a chat request with the FakeChatClient a test gave it, else a 404.
         builder.Configuration["Parameters:azure-openai-api-key"] = "not-a-real-key";
         // Embeddings use the chat model's azure-openai-api-key, given its value above, and the endpoint the chat model shares:
-        // the fixture's chat stand-in, which ends in /v1 and is used as is. It answers chat with the FakeChatClient a test
-        // registered and passes every other request, embeddings included, on to the embeddings stand-in.
-        builder.Configuration["Parameters:azure-openai-endpoint"] = model.Endpoint;
+        // the fixture's stand-in, which ends in /v1 and is used as is. It answers embeddings, and a chat request with the
+        // FakeChatClient a test gave it, else a 404.
+        builder.Configuration["Parameters:azure-openai-endpoint"] = embeddings.Endpoint;
 
         app = await builder.BuildAsync(timeout.Token);
         await app.StartAsync(timeout.Token);
@@ -92,7 +83,6 @@ public sealed class AspireFixture : IAsyncLifetime
             await app.DisposeAsync();
         }
 
-        await model.DisposeAsync();
         await embeddings.DisposeAsync();
     }
 
