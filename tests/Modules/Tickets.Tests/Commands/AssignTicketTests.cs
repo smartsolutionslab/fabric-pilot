@@ -77,7 +77,7 @@ public class AssignTicketTests
         var result = await Handle(new AssignTicket(Guid.CreateVersion7(), "staff"));
 
         result.Error.Code.ShouldBe("tickets.ticket-not-found");
-        await staff.DidNotReceiveWithAnyArgs().IsStaffAsync(default!, default);
+        await staff.DidNotReceiveWithAnyArgs().IsStaffAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
