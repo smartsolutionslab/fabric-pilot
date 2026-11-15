@@ -15,6 +15,11 @@ vi.mock('@/api/generated', async (importOriginal) => {
   return standInForTheGeneratedClient(await importOriginal(), examples, shown);
 });
 
+// The triage controls name the signed-in staff member; outside the app there is no sign-in to read it from.
+vi.mock('react-oidc-context', () => ({
+  useAuth: () => ({ user: { profile: { preferred_username: 'staff' } } }),
+}));
+
 // Whatever else asks the host waits for an answer that never comes.
 vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
 

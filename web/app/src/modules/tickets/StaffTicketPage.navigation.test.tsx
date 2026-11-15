@@ -8,13 +8,21 @@ import { axe } from 'vitest-axe';
 import { baseApi } from '@/api/baseApi';
 import { StaffTicketPage } from './StaffTicketPage';
 
+// The triage controls name the signed-in staff member; outside the app there is no sign-in to read it from.
+vi.mock('react-oidc-context', () => ({
+  useAuth: () => ({ user: { profile: { preferred_username: 'staff' } } }),
+}));
+
 const firstId = '019a7b3c-5d2e-7f10-8a4b-3c2d1e0f9a8b';
 const secondId = '019a7b3c-5d2e-7f10-8a4b-3c2d1e0f9a8c';
 const ticketOf = (id: string, subject: string) => ({
   id,
+  tenant: 'tenant-a',
   subject,
   description: 'It shows error 42.',
   priority: 'High',
+  status: 'Open',
+  assignee: null,
   raisedAt: '2026-11-12T09:30:00+00:00',
   attachments: [],
 });
