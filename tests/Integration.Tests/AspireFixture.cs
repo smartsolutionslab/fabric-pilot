@@ -25,7 +25,10 @@ public sealed class AspireFixture : IAsyncLifetime
         model = new FakeModelServer(embeddings.Endpoint);
     }
 
-    /// <summary>The host's embeddings model: a stand-in on this machine, which a test can hold an answer back from.</summary>
+    /// <summary>
+    /// The host's model, embeddings and chat on one endpoint: a stand-in on this machine, which a test can hold an
+    /// embeddings answer back from and give a chat answer.
+    /// </summary>
     public FakeEmbeddingsServer Embeddings => embeddings;
 
     /// <summary>The host's chat model: a stand-in a test gives its answers; it hands every other request to <see cref="Embeddings"/>.</summary>

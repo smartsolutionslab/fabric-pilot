@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, test, vi } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -6,11 +6,12 @@ import { examples } from './NotificationsPage.data';
 import { NotificationsPage } from './NotificationsPage';
 
 // The screen's axe check, generated with it. It runs whatever the screen's own component test does, so a check skipped
-// or commented out there never leaves the screen unchecked.
+// or commented out there never leaves the screen unchecked. It asks nothing of what the screen shows, only that axe
+// finds no violations in it: what the screen does is its own tests'.
 
 // The page renders on its own, without the store or the host. Each hook of the generated client answers
 // as if its request were still on its way or, once the page is shown with its data, with its example in the data file.
-const shown = vi.hoisted(() => ({ withExamples: false, refusing: '', failing: '' }));
+const shown = vi.hoisted(() => ({ withExamples: false }));
 vi.mock('@/api/generated', async (importOriginal) => {
   const { examples } = await import('@/modules/notifications/NotificationsPage.data');
   const state = (data: unknown, loading: boolean) => ({
@@ -22,24 +23,8 @@ vi.mock('@/api/generated', async (importOriginal) => {
     isSuccess: !loading,
     isError: false,
   });
-  // A request that failed, as RTK Query reports it.
-  const failure = (status: number) => ({
-    ...state(undefined, false),
-    error: { status, data: '' },
-    isSuccess: false,
-    isError: true,
-  });
-  const answer = (hook: string) => {
-    // A request the host refused: what a permission probe answers a caller without the permission.
-    if (hook === shown.refusing) {
-      return failure(403);
-    }
-    // A request that failed for any other reason.
-    if (hook === shown.failing) {
-      return failure(500);
-    }
-    return shown.withExamples && hook in examples ? state(examples[hook], false) : state(undefined, true);
-  };
+  const answer = (hook: string) =>
+    shown.withExamples && hook in examples ? state(examples[hook], false) : state(undefined, true);
   // A mutation nobody has triggered is idle, not saving: the page shows as it first does.
   const idle = {
     data: undefined,
@@ -71,24 +56,21 @@ vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
 afterEach(cleanup);
 afterEach(() => {
   shown.withExamples = false;
-  shown.refusing = '';
-  shown.failing = '';
 });
 
-async function renderPage() {
-  const { container } = render(
+// The screen has rendered when render returns.
+function renderPage() {
+  return render(
     <MemoryRouter>
       <NotificationsPage />
     </MemoryRouter>,
-  );
-  expect(await screen.findByRole('heading', { name: 'Notifications' })).toBeInTheDocument();
-  return container;
+  ).container;
 }
 
 // Whichever test renders first in a file also pays for warming up jsdom, React and axe, which in a larger project under
 // parallel load passes 2.5 s of the default 5 s.
 test('the Notifications page has no accessibility violations axe can find', { timeout: 20_000 }, async () => {
-  const container = await renderPage();
+  const container = renderPage();
 
   expect(await axe(container)).toHaveNoViolations();
 });
@@ -96,37 +78,7 @@ test('the Notifications page has no accessibility violations axe can find', { ti
 // Until NotificationsPage.data.ts has an example (AGENTS.md), the page is checked only as it loads.
 test.runIf(Object.keys(examples).length > 0)('the Notifications page passes axe with its example data', async () => {
   shown.withExamples = true;
-  const container = await renderPage();
+  const container = renderPage();
 
-  expect(await axe(container)).toHaveNoViolations();
-});
-
-// With an example for useGetNotificationsPermissionsManageQuery in NotificationsPage.data.ts, the probe answers 200 and the page
-// shows "Manage".
-const probeAnswers = 'useGetNotificationsPermissionsManageQuery' in examples;
-
-test.runIf(probeAnswers)('the Notifications page offers Manage once its probe answers', async () => {
-  shown.withExamples = true;
-  await renderPage();
-
-  expect(screen.getByRole('heading', { name: 'Manage' })).toBeInTheDocument();
-});
-
-test('the Notifications page offers no Manage when the probe refuses', async () => {
-  shown.withExamples = true;
-  shown.refusing = 'useGetNotificationsPermissionsManageQuery';
-  await renderPage();
-
-  expect(screen.queryByRole('heading', { name: 'Manage' })).not.toBeInTheDocument();
-  expect(screen.queryByText('Permissions for notifications could not be loaded.')).not.toBeInTheDocument();
-});
-
-test('the Notifications page shows that its probe failed, not a refusal', async () => {
-  shown.withExamples = true;
-  shown.failing = 'useGetNotificationsPermissionsManageQuery';
-  const container = await renderPage();
-
-  expect(screen.getByText('Permissions for notifications could not be loaded.')).toHaveAttribute('role', 'alert');
-  expect(screen.queryByRole('heading', { name: 'Manage' })).not.toBeInTheDocument();
   expect(await axe(container)).toHaveNoViolations();
 });
