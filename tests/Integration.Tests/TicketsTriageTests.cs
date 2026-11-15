@@ -81,17 +81,17 @@ public class TicketsTriageTests(AspireFixture aspire)
         var ticket = await RaiseAsync(customer, subject, "High");
         using var staff = await aspire.CreateHostClientAsync("staff");
 
-        using var response = await ChangeStatusAsync(staff, "tenant-a", ticket, "Resolved");
+        using var response = await ChangeStatusAsync(staff, "tenant-a", ticket, "InProgress");
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent, await response.Content.ReadAsStringAsync(cancellationToken));
-        (await Json(staff, $"/tickets/tickets/all-tenants/{ticket}"))["status"]!.GetValue<string>().ShouldBe("Resolved");
+        (await Json(staff, $"/tickets/tickets/all-tenants/{ticket}"))["status"]!.GetValue<string>().ShouldBe("InProgress");
         var notice = await Eventually(
             async () => (await Json(customer, Notices))["items"]!.AsArray().Select(item => item!.AsObject()).SingleOrDefault(item => item["ticketId"]!.GetValue<Guid>() == ticket),
             cancellationToken);
-        notice["text"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now Resolved.");
+        notice["text"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now in progress.");
         var email = await Eventually(async () => (await EmailsAbout(subject, cancellationToken)).SingleOrDefault(), cancellationToken);
         email["To"]!.AsArray().Select(address => address!["Address"]!.GetValue<string>()).ShouldBe(["developer@example.com"]);
-        email["Subject"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now Resolved");
+        email["Subject"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now in progress");
     }
 
     [Fact]
