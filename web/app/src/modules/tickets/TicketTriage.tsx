@@ -36,6 +36,7 @@ export function TicketTriage({ ticket }: { ticket: StaffTicketDto }) {
   const { tenant, id: ticketId } = ticket;
 
   const onChangeStatus = statusForm.handleSubmit(async ({ status }) => {
+    setOutcome(undefined);
     try {
       await changeStatus({ tenant, ticketId, ticketStatusChange: { status } }).unwrap();
       setOutcome({ done: `The status is now ${statusLabel(status)}.` });
@@ -45,6 +46,7 @@ export function TicketTriage({ ticket }: { ticket: StaffTicketDto }) {
   });
 
   const assignTo = async (assignee: string) => {
+    setOutcome(undefined);
     try {
       await assign({ tenant, ticketId, ticketAssignment: { assignee } }).unwrap();
       setOutcome({ done: `Assigned to ${assignee}.` });
