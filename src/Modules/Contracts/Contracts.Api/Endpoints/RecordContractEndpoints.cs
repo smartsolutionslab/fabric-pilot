@@ -23,11 +23,10 @@ public sealed class RecordContractEndpoints : IEndpoint
     }
 
     /// <summary>
-    /// The handler runs in the route's tenant (<c>ForTenant()</c>, which checked it), so the command does not carry it;
-    /// <paramref name="tenant"/> is bound only for the OpenAPI document and the generated client to name the route's
-    /// parameter. No endpoint reads one contract, so the answer is the new id without a location.
+    /// The handler runs in the route's tenant (<c>ForTenant()</c>, which checked it), so the command does not carry it.
+    /// No endpoint reads one contract, so the answer is the new id without a location.
     /// </summary>
-    private static async Task<Results<Created<Guid>, ProblemHttpResult>> RecordAsync(string tenant, RecordContract contract, IDispatcher dispatcher, CancellationToken cancellationToken)
+    private static async Task<Results<Created<Guid>, ProblemHttpResult>> RecordAsync(RecordContract contract, IDispatcher dispatcher, CancellationToken cancellationToken)
     {
         Ensure.That(contract).IsNotNull();
 
