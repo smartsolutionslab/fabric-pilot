@@ -13,4 +13,7 @@ public static class ContractsPolicyNames
 
     /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
     public const string WriteSharedRecords = "contracts.write-shared-records";
+
+    /// <summary>Staff write into the tenant the route names: name it on an endpoint mapped with <c>ForTenant()</c>.</summary>
+    public const string WriteForTenants = "contracts.write-for-tenants";
 }
