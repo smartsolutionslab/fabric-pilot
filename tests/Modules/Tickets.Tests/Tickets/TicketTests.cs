@@ -49,7 +49,7 @@ public class TicketTests
 
         changed.ShouldBeTrue();
         ticket.Status.ShouldBe(TicketStatus.Resolved);
-        ticket.DomainEvents.Last().ShouldBe(new TicketStatusChanged(ticket.Id, TicketStatus.Open, TicketStatus.Resolved));
+        ticket.DomainEvents[^1].ShouldBe(new TicketStatusChanged(ticket.Id, TicketStatus.Open, TicketStatus.Resolved));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class TicketTests
         assigned.IsSuccess.ShouldBeTrue();
         assigned.Value.ShouldBeTrue();
         ticket.Assignee.ShouldBe("staff");
-        ticket.DomainEvents.Last().ShouldBe(new TicketAssigned(ticket.Id, "staff"));
+        ticket.DomainEvents[^1].ShouldBe(new TicketAssigned(ticket.Id, "staff"));
     }
 
     [Fact]
