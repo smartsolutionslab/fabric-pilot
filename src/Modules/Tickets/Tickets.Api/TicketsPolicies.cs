@@ -20,5 +20,6 @@ public sealed class TicketsPolicies : IModulePolicies
         policies.AddPolicy(TicketsPolicyNames.RaiseAndRead, policy => policy.RequireRole("customer-user"));
         policies.AddPolicy(TicketsPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(TicketsPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(TicketsPolicyNames.WriteForTenants, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

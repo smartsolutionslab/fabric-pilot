@@ -16,6 +16,7 @@ public sealed class AgentTests
     [Fact]
     public async Task A_query_runs_the_agent_whose_tool_call_goes_through_the_dispatcher_and_the_agent_answers_with_its_result()
     {
+        using var caller = Caller();
         using var model = new ToolCallingChatClient("count_words", new Dictionary<string, object?> { ["text"] = "one two three" });
         await using var services = Services(model);
         var dispatcher = services.GetRequiredService<RecordingDispatcher>();
@@ -43,6 +44,7 @@ public sealed class AgentTests
     [Fact]
     public async Task A_failed_result_reaches_the_model_as_its_error_code()
     {
+        using var caller = Caller();
         using var model = new ToolCallingChatClient("count_words", new Dictionary<string, object?> { ["text"] = " " });
         await using var services = Services(model);
         var dispatcher = services.GetRequiredService<RecordingDispatcher>();
@@ -83,6 +85,7 @@ public sealed class AgentTests
     [Fact]
     public async Task A_paged_query_called_with_whole_numbers_answers_that_page_through_the_dispatcher()
     {
+        using var caller = Caller();
         using var model = new ToolCallingChatClient("list_words", new Dictionary<string, object?> { ["text"] = "a b c d e", ["page"] = 2, ["pageSize"] = 2 });
         await using var services = Services(model);
         var dispatcher = services.GetRequiredService<RecordingDispatcher>();
@@ -110,6 +113,7 @@ public sealed class AgentTests
     [Fact]
     public async Task A_page_that_may_be_absent_reaches_the_handler_as_null_when_the_model_passes_null()
     {
+        using var caller = Caller();
         using var model = new ToolCallingChatClient("unused", new Dictionary<string, object?>());
         await using var services = Services(model);
         var dispatcher = services.GetRequiredService<RecordingDispatcher>();
@@ -188,6 +192,7 @@ public sealed class AgentTests
     [Fact]
     public async Task An_absent_answer_reaches_the_model_as_null()
     {
+        using var caller = Caller();
         using var model = new ToolCallingChatClient("longest_word", new Dictionary<string, object?> { ["text"] = " ", ["atLeast"] = null });
         await using var services = Services(model);
         var dispatcher = services.GetRequiredService<RecordingDispatcher>();
@@ -201,6 +206,7 @@ public sealed class AgentTests
     [Fact]
     public async Task An_optional_argument_is_offered_as_its_value_or_null_and_reaches_the_handler_when_given()
     {
+        using var caller = Caller();
         using var model = new ToolCallingChatClient("longest_word", new Dictionary<string, object?> { ["text"] = "a bb cccc", ["atLeast"] = 2 });
         await using var services = Services(model);
         var dispatcher = services.GetRequiredService<RecordingDispatcher>();
@@ -309,6 +315,78 @@ public sealed class AgentTests
     }
 
     [Fact]
+    public async Task A_caller_without_the_policy_of_the_endpoint_that_sends_a_tools_request_is_refused_through_the_agent_and_its_handler_never_runs()
+    {
+        using var caller = AgentCaller.SignedIn("visitor", AgentCaller.Sending<CountWords>(AgentCaller.ManagePolicy));
+        var (answer, dispatcher) = await AskAsync();
+
+        answer.IsSuccess.ShouldBeTrue();
+        answer.Value.ShouldStartWith("The tool said: Refused: ");
+        answer.Value.ShouldContain(AgentCaller.ManagePolicy);
+        dispatcher.Requests.ShouldNotContain(request => request is CountWords);
+    }
+
+    [Fact]
+    public async Task A_caller_with_the_policy_of_the_endpoint_that_sends_a_tools_request_gets_its_answer_through_the_agent()
+    {
+        using var caller = AgentCaller.SignedIn("manager", AgentCaller.Sending<CountWords>(AgentCaller.ManagePolicy));
+        var (answer, dispatcher) = await AskAsync();
+
+        answer.Value.ShouldBe("The tool said: 3");
+        dispatcher.Requests.ShouldContain(new CountWords("one two three"));
+    }
+
+    [Fact]
+    public async Task A_caller_must_meet_the_policies_of_every_endpoint_that_sends_a_tools_request()
+    {
+        using var caller = AgentCaller.SignedIn("visitor", AgentCaller.Sending<CountWords>(), AgentCaller.Sending<CountWords>(AgentCaller.ManagePolicy));
+        var (answer, dispatcher) = await AskAsync();
+
+        answer.Value.ShouldStartWith("The tool said: Refused: ");
+        dispatcher.Requests.ShouldNotContain(request => request is CountWords);
+    }
+
+    [Fact]
+    public async Task A_tool_whose_endpoint_requires_only_sign_in_answers_any_signed_in_caller()
+    {
+        using var caller = AgentCaller.SignedIn("visitor", AgentCaller.Sending<CountWords>());
+        var (answer, _) = await AskAsync();
+
+        answer.Value.ShouldBe("The tool said: 3");
+    }
+
+    [Fact]
+    public async Task A_tool_whose_endpoint_requires_sign_in_is_refused_to_an_anonymous_caller()
+    {
+        using var caller = AgentCaller.Anonymous(AgentCaller.Sending<CountWords>());
+        var (answer, dispatcher) = await AskAsync();
+
+        answer.Value.ShouldStartWith("The tool said: Refused: ");
+        dispatcher.Requests.ShouldNotContain(request => request is CountWords);
+    }
+
+    [Fact]
+    public async Task A_tool_whose_request_no_endpoint_sends_is_refused_and_its_handler_never_runs()
+    {
+        using var caller = AgentCaller.SignedIn("manager", AgentCaller.Sending<ListWords>());
+        var (answer, dispatcher) = await AskAsync();
+
+        answer.Value.ShouldStartWith("The tool said: Refused: ");
+        answer.Value.ShouldContain("no endpoint sends CountWords");
+        dispatcher.Requests.ShouldNotContain(request => request is CountWords);
+    }
+
+    [Fact]
+    public async Task Without_an_http_caller_a_tool_is_refused_and_its_handler_never_runs()
+    {
+        var (answer, dispatcher) = await AskAsync();
+
+        answer.Value.ShouldStartWith("The tool said: Refused: ");
+        answer.Value.ShouldContain("signed-in caller");
+        dispatcher.Requests.ShouldNotContain(request => request is CountWords);
+    }
+
+    [Fact]
     public void Only_a_command_or_a_query_becomes_a_tool()
     {
         var dispatcher = new RecordingDispatcher(new Dispatcher(new ServiceCollection().BuildServiceProvider()));
@@ -317,6 +395,25 @@ public sealed class AgentTests
 
         refused.Message.ShouldContain("is not a command or a query");
     }
+
+    /// <summary>The sample agent asked to count the words of 'one two three', and the dispatcher that saw what it sent.</summary>
+    private static async Task<(Result<string, ApiError> Answer, RecordingDispatcher Dispatcher)> AskAsync()
+    {
+        using var model = new ToolCallingChatClient("count_words", new Dictionary<string, object?> { ["text"] = "one two three" });
+        await using var services = Services(model);
+        var dispatcher = services.GetRequiredService<RecordingDispatcher>();
+        var answer = await dispatcher.QueryAsync(new AskAboutWords("How many words are in 'one two three'?"), TestContext.Current.CancellationToken);
+        return (answer, dispatcher);
+    }
+
+    /// <summary>A signed-in caller of a host whose endpoints send the sample agent's requests, each requiring sign-in alone.</summary>
+    private static AgentCaller Caller() =>
+        AgentCaller.SignedIn(
+            "developer",
+            AgentCaller.Sending<CountWords>(),
+            AgentCaller.Sending<ListWords>(),
+            AgentCaller.Sending<LongestWord>(),
+            AgentCaller.Sending<BrowseWords>());
 
     /// <summary>The value's schema of an optional property, which must be <c>anyOf: [value, {"type": "null"}]</c>.</summary>
     private static JsonElement ValueOrNull(JsonElement property)

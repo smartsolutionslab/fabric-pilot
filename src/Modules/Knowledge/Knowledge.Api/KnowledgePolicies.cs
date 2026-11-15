@@ -19,5 +19,6 @@ public sealed class KnowledgePolicies : IModulePolicies
         policies.AddPolicy(KnowledgePolicyNames.SuggestAnswers, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(KnowledgePolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(KnowledgePolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(KnowledgePolicyNames.WriteForTenants, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

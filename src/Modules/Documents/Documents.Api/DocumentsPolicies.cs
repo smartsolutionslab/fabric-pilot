@@ -18,5 +18,6 @@ public sealed class DocumentsPolicies : IModulePolicies
         policies.AddPolicy(DocumentsPolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
         policies.AddPolicy(DocumentsPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(DocumentsPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(DocumentsPolicyNames.WriteForTenants, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

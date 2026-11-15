@@ -20,5 +20,6 @@ public sealed class NotificationsPolicies : IModulePolicies
         policies.AddPolicy(NotificationsPolicyNames.ReadOwnNotices, policy => policy.RequireRole("customer-user"));
         policies.AddPolicy(NotificationsPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(NotificationsPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(NotificationsPolicyNames.WriteForTenants, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

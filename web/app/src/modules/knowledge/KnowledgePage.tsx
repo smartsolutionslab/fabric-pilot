@@ -7,6 +7,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { columnsOf } from '@/components/ui/data-table-columns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCanManage } from './useCanManage';
 
 const pageSize = 20;
 const none: ArticleSummaryDto[] = [];
@@ -22,6 +23,7 @@ const columns = articles.columns([
 
 /** The knowledge base every tenant shares: the published articles, searched by title and text. */
 export function KnowledgePage() {
+  const permission = useCanManage();
   const [draft, setDraft] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -43,6 +45,8 @@ export function KnowledgePage() {
           </Button>
         </RequirePermission>
       </div>
+      {permission === 'granted' && <h2>Manage</h2>}
+      {permission === 'failed' && <p role="alert">Permissions for knowledge could not be loaded.</p>}
       <form role="search" onSubmit={onSearch} className="flex items-end gap-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="article-search">Search articles</Label>

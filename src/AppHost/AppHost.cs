@@ -10,6 +10,10 @@ var database = postgres
 var migrations = builder.AddProject<Projects.MigrationRunner>("migrations")
     .WithReference(database)
     .WaitFor(database);
+// Tenancy, a tenant column: the tenants staff may write for, given to the host. The identity provider's local users
+// belong to them.
+string[] tenants = ["tenant-a", "tenant-b"];
+
 // Keycloak runs as a plain container, development only (see docs/adr). Its administrator is "admin", with a password
 // Aspire generates once and keeps in the AppHost's user secrets; the realm in ./realms is imported on first start.
 var keycloakPassword = builder.AddResource(ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "keycloak-password"));
@@ -55,6 +59,7 @@ var azureOpenAIEmbeddingDeployment = builder.AddParameter("azure-openai-embeddin
 var host = builder.AddProject<Projects.Host>("host")
     .WithHttpHealthCheck("/health")
     .WaitForCompletion(migrations)
+    .WithTenants(tenants)
     .WithReference(database)
     .WaitFor(database)
     .WithReference(keycloak.GetEndpoint("http"))
