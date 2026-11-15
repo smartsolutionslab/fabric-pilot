@@ -401,6 +401,7 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 
 - Every screen has an axe check, `expect(await axe(container)).toHaveNoViolations()`, in `<Name>Page.axe.test.*` beside it. `fabric add-module` generates it with a module's page; a screen you write gets one too. It runs whatever the screen's own `<Name>Page.test.*` does, so leave it in place; `src/screens.test.ts` fails without it.
 - The axe check asks nothing of what a screen shows, only that axe finds no violations in it, so a screen you rewrite needs no generated heading or section to pass it. Test what the screen does in its own tests; the generated page's Manage section is checked in `<Name>Page.probe.test.*`, which is yours once you rewrite the page.
+- With browser sign-in, the axe check renders the screen for the local user `developer`, signed in: what `RequirePermission`, `useHasRole` and `useHasClaim` show the developer is checked, what they show only to other users is not.
 - Fill in the screen's `<Name>Page.data.ts`, beside its axe check: an example answer per hook of the generated client the screen calls (`export const examples: Record<string, unknown> = { useGetInvoicesQuery: { items: [...], totalCount: 1, page: 1, pageSize: 20 } };`). The axe check then also renders the screen with that data; while the file is empty, the screen is checked only as it loads, and whatever it shows once data comes goes unchecked.
 - Fix the markup (labels, roles, headings), never silence a rule.
 

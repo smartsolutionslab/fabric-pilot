@@ -2,6 +2,7 @@ import { cleanup, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, test, vi } from 'vitest';
 import { axe } from 'vitest-axe';
+import { SignedInAsDeveloper } from '@/auth/SignedInAsDeveloper';
 import { examples } from './KnowledgePage.data';
 import { KnowledgePage } from './KnowledgePage';
 
@@ -49,13 +50,6 @@ vi.mock('@/api/generated', async (importOriginal) => {
   );
 });
 
-// The page offers staff "Manage articles" through RequirePermission, which reads the signed-in user from
-// react-oidc-context: a provider besides the API client, given here by hand (docs/adr/0050). The user is staff, so the
-// check sees that link too.
-vi.mock('react-oidc-context', () => ({
-  useAuth: () => ({ user: { profile: { preferred_username: 'staff', realm_access: { roles: ['staff'] } } } }),
-}));
-
 // Whatever else asks the host waits for an answer that never comes.
 vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
 
@@ -66,11 +60,15 @@ afterEach(() => {
 });
 
 // The screen has rendered when render returns.
+// The screen renders for the local user developer, signed in, without the sign-in provider: the check sees the screen
+// as the developer does.
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <KnowledgePage />
-    </MemoryRouter>,
+    <SignedInAsDeveloper>
+      <MemoryRouter>
+        <KnowledgePage />
+      </MemoryRouter>
+    </SignedInAsDeveloper>,
   ).container;
 }
 
