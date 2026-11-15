@@ -16,7 +16,7 @@ partial class TicketsDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261112060650_RaiseTickets";
+    public override string LastMigrationId => "20261115084439_TriageTickets";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -34,6 +34,11 @@ partial class TicketsDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("uuid")
                     .HasColumnName("id");
 
+                b.Property<string>("Assignee")
+                    .HasMaxLength(255)
+                    .HasColumnType("character varying(255)")
+                    .HasColumnName("assignee");
+
                 b.Property<string>("Description")
                     .IsRequired()
                     .HasMaxLength(4000)
@@ -50,6 +55,14 @@ partial class TicketsDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("raised_at");
 
+                b.Property<string>("Status")
+                    .IsRequired()
+                    .ValueGeneratedOnAdd()
+                    .HasMaxLength(16)
+                    .HasColumnType("character varying(16)")
+                    .HasDefaultValue("Open")
+                    .HasColumnName("status");
+
                 b.Property<string>("Subject")
                     .IsRequired()
                     .HasMaxLength(200)
@@ -65,6 +78,8 @@ partial class TicketsDbContextModelSnapshot : ModelSnapshot
 
                 b.HasIndex("RaisedAt");
 
+                b.HasIndex("Status");
+
                 b.HasIndex("TenantId");
 
                 b.ToTable("tickets", "tickets");
@@ -72,6 +87,31 @@ partial class TicketsDbContextModelSnapshot : ModelSnapshot
 
         modelBuilder.Entity("FabricPilot.Modules.Tickets.Domain.Tickets.Ticket", b =>
             {
+                b.OwnsOne("FabricPilot.Modules.Tickets.Domain.Tickets.TicketCustomer", "Customer", b1 =>
+                    {
+                        b1.Property<Guid>("TicketId")
+                            .HasColumnType("uuid");
+
+                        b1.Property<string>("Email")
+                            .IsRequired()
+                            .HasMaxLength(320)
+                            .HasColumnType("character varying(320)")
+                            .HasColumnName("customer_email");
+
+                        b1.Property<string>("UserId")
+                            .IsRequired()
+                            .HasMaxLength(64)
+                            .HasColumnType("character varying(64)")
+                            .HasColumnName("customer_user_id");
+
+                        b1.HasKey("TicketId");
+
+                        b1.ToTable("tickets", "tickets");
+
+                        b1.WithOwner()
+                            .HasForeignKey("TicketId");
+                    });
+
                 b.OwnsMany("FabricPilot.Modules.Tickets.Domain.Tickets.Attachment", "Attachments", b1 =>
                     {
                         b1.Property<Guid>("Id")
@@ -112,6 +152,9 @@ partial class TicketsDbContextModelSnapshot : ModelSnapshot
                     });
 
                 b.Navigation("Attachments");
+
+                b.Navigation("Customer")
+                    .IsRequired();
             });
 #pragma warning restore 612, 618
     }

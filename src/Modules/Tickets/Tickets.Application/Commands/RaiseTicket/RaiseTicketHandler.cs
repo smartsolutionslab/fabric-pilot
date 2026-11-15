@@ -14,7 +14,7 @@ public sealed class RaiseTicketHandler(ITicketStore tickets, IBlobStore blobs, T
     {
         Ensure.That(command).IsNotNull();
 
-        var (subject, description, priorityName, attachments) = command;
+        var (subject, description, priorityName, customer, attachments) = command;
         if (!Enum.GetNames<TicketPriority>().Contains(priorityName, StringComparer.Ordinal))
         {
             return Failure(TicketsFailures.UnknownPriority(priorityName));
@@ -26,6 +26,7 @@ public sealed class RaiseTicketHandler(ITicketStore tickets, IBlobStore blobs, T
             subject,
             description,
             Enum.Parse<TicketPriority>(priorityName),
+            customer,
             [.. files.Select(file => new AttachmentFile(file.Id, file.File.FileName, file.File.ContentType, file.File.Size))],
             time.GetUtcNow());
         if (raised.IsFailure)

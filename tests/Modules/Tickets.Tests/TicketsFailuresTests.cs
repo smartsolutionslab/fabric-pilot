@@ -7,7 +7,7 @@ namespace FabricPilot.Modules.Tickets.Tests;
 public class TicketsFailuresTests
 {
     [Fact]
-    public void Each_way_raising_a_ticket_fails_is_answered_as_422_with_its_own_code_and_message()
+    public void Each_way_a_ticket_refuses_a_change_is_answered_as_422_with_its_own_code_and_message()
     {
         TicketError[] errors =
         [
@@ -16,6 +16,7 @@ public class TicketsFailuresTests
             new TooManyAttachments(Ticket.MaximumAttachments),
             new AttachmentTooLarge("huge.iso", Attachment.MaximumSize),
             new InvalidAttachmentName(Attachment.MaximumFileNameLength),
+            new InvalidAssignee(Ticket.MaximumAssigneeLength),
         ];
 
         var failures = errors.Select(TicketsFailures.From).ToList();
@@ -27,6 +28,7 @@ public class TicketsFailuresTests
             "tickets.too-many-attachments",
             "tickets.attachment-too-large",
             "tickets.invalid-attachment-name",
+            "tickets.invalid-assignee",
         ]);
         failures.ShouldAllBe(failure => failure.Status == HttpStatusCode.UnprocessableEntity);
         failures.Select(failure => failure.Message).ShouldBe(errors.Select(error => ((DomainError)error.Value!).Message));

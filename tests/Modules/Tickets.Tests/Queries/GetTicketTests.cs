@@ -14,7 +14,7 @@ public class GetTicketTests
     public async Task A_ticket_is_shown_with_its_attachments()
     {
         var attachment = new AttachmentFile(AttachmentId.New(), "invoice.pdf", "application/pdf", 1234);
-        var ticket = Ticket.Raise(TicketId.New(), "Wrong invoice", "The total is off.", TicketPriority.Normal, [attachment], RaisedAt).Value;
+        var ticket = Ticket.Raise(TicketId.New(), "Wrong invoice", "The total is off.", TicketPriority.Normal, Customers.Developer, [attachment], RaisedAt).Value;
         store.Saved.Add(ticket);
 
         var result = await new GetTicketHandler(store).HandleAsync(new GetTicket(ticket.Id.Value), TestContext.Current.CancellationToken);

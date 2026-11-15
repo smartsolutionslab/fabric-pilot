@@ -45,7 +45,7 @@ test.runIf(Object.keys(examples).length > 0)(
   async () => {
     shown.withExamples = true;
     const container = renderPage();
-    expect(await screen.findByRole('heading', { name: 'Tickets of every tenant' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Triage queue' })).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
   },

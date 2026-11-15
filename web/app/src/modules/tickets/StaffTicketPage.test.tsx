@@ -1,6 +1,7 @@
 import { skipToken } from '@reduxjs/toolkit/query';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useAuth } from 'react-oidc-context';
 import { Link, MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -13,14 +14,20 @@ import { StaffTicketPage } from './StaffTicketPage';
 vi.mock('@/api/generated', () => ({
   useGetTicketsTicketsAllTenantsByTicketIdQuery: vi.fn(),
   usePostKnowledgeSuggestedAnswersMutation: vi.fn(),
+  usePutTicketsTicketsByTenantAndTicketIdStatusMutation: () => [vi.fn(), { isLoading: false }],
+  usePutTicketsTicketsByTenantAndTicketIdAssigneeMutation: () => [vi.fn(), { isLoading: false }],
 }));
+vi.mock('react-oidc-context', () => ({ useAuth: vi.fn() }));
 
 const ticketId = '019a7b3c-5d2e-7f10-8a4b-3c2d1e0f9a8b';
 const ticket = {
   id: ticketId,
+  tenant: 'tenant-b',
   subject: 'Printer offline',
   description: 'It shows error 42.',
   priority: 'High',
+  status: 'InProgress',
+  assignee: 'staff',
   raisedAt: '2026-11-12T09:30:00+00:00',
   attachments: [{ id: 'f1', fileName: 'screenshot.png', contentType: 'image/png', size: 2048 }],
 };
@@ -44,6 +51,9 @@ function answering(suggestion: unknown) {
 }
 
 beforeEach(() => {
+  vi.mocked(useAuth).mockReturnValue({
+    user: { profile: { preferred_username: 'staff' } },
+  } as unknown as ReturnType<typeof useAuth>);
   vi.mocked(useGetTicketsTicketsAllTenantsByTicketIdQuery).mockReturnValue({
     data: ticket,
     currentData: ticket,
@@ -67,16 +77,23 @@ function renderTicket(path = `/tickets/${ticketId}`) {
   );
 }
 
-test('staff see a tenant’s ticket with its subject, description, priority and files', { timeout: 20_000 }, () => {
-  renderTicket();
+test(
+  'staff see a tenant’s ticket with its tenant, subject, description, priority, status and files',
+  { timeout: 20_000 },
+  () => {
+    renderTicket();
 
-  expect(useGetTicketsTicketsAllTenantsByTicketIdQuery).toHaveBeenCalledWith({ ticketId });
-  expect(screen.getByRole('heading', { name: 'Printer offline' })).toBeInTheDocument();
-  expect(screen.getByText('It shows error 42.')).toBeInTheDocument();
-  expect(screen.getByText('High')).toBeInTheDocument();
-  expect(screen.getByText('screenshot.png')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Back to the tickets' })).toBeInTheDocument();
-});
+    expect(useGetTicketsTicketsAllTenantsByTicketIdQuery).toHaveBeenCalledWith({ ticketId });
+    expect(screen.getByRole('heading', { name: 'Printer offline' })).toBeInTheDocument();
+    expect(screen.getByText('It shows error 42.')).toBeInTheDocument();
+    expect(screen.getByText('High')).toBeInTheDocument();
+    expect(screen.getByText('tenant-b')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('InProgress');
+    expect(screen.getByText('Assigned to staff.')).toBeInTheDocument();
+    expect(screen.getByText('screenshot.png')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to the tickets' })).toBeInTheDocument();
+  },
+);
 
 test('asking for a suggestion sends the ticket’s subject and description as the question', async () => {
   const user = userEvent.setup();

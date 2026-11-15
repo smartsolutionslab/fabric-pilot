@@ -12,4 +12,6 @@ public static class TicketErrors
     public static TicketError AttachmentTooLarge(string fileName, long maximumSize) => new AttachmentTooLarge(fileName, maximumSize);
 
     public static TicketError InvalidAttachmentName(int maximum) => new InvalidAttachmentName(maximum);
+
+    public static TicketError InvalidAssignee(int maximum) => new InvalidAssignee(maximum);
 }
