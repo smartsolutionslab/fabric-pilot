@@ -103,13 +103,30 @@ public class TicketsTriageTests(AspireFixture aspire)
 
         using var toThemselves = await AssignAsync(staff, "tenant-b", ticket, "staff");
         var afterFirst = await Json(staff, $"/tickets/tickets/all-tenants/{ticket}");
-        using var toColleague = await AssignAsync(staff, "tenant-b", ticket, "colleague");
+        using var toColleague = await AssignAsync(staff, "tenant-b", ticket, "staff-b");
 
         toThemselves.StatusCode.ShouldBe(HttpStatusCode.NoContent, await toThemselves.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         afterFirst["assignee"]!.GetValue<string>().ShouldBe("staff");
         afterFirst["tenant"]!.GetValue<string>().ShouldBe("tenant-b");
-        toColleague.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        Items(await Json(staff, $"{Queue}&tenant=tenant-b")).Single(item => Id(item) == ticket)["assignee"]!.GetValue<string>().ShouldBe("colleague");
+        toColleague.StatusCode.ShouldBe(HttpStatusCode.NoContent, await toColleague.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Items(await Json(staff, $"{Queue}&tenant=tenant-b")).Single(item => Id(item) == ticket)["assignee"]!.GetValue<string>().ShouldBe("staff-b");
+    }
+
+    /// <summary>developer is a realm user without the staff role; nobody-at-all is no user.</summary>
+    [Theory]
+    [InlineData("developer")]
+    [InlineData("nobody-at-all")]
+    public async Task Assigning_a_ticket_to_someone_who_is_not_staff_is_refused_and_changes_nothing(string assignee)
+    {
+        using var customer = await aspire.CreateHostClientAsync("developer");
+        var ticket = await RaiseAsync(customer, $"Not staff {Guid.CreateVersion7()}", "Normal");
+        using var staff = await aspire.CreateHostClientAsync("staff");
+
+        using var response = await AssignAsync(staff, "tenant-a", ticket, assignee);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await ProblemCodeAsync(response)).ShouldBe("tickets.assignee-not-staff");
+        (await Json(staff, $"/tickets/tickets/all-tenants/{ticket}"))["assignee"].ShouldBeNull();
     }
 
     [Fact]

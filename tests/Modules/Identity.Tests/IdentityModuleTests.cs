@@ -30,4 +30,18 @@ public class IdentityModuleTests
 
         Should.NotThrow(buildContainer);
     }
+
+    /// <summary>Another module (tickets) checks an assignee through the contract; the identity module is what answers it.</summary>
+    [Fact]
+    public void The_module_provides_the_staff_directory_other_modules_ask()
+    {
+        var services = new ServiceCollection().AddLogging();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["ConnectionStrings:database"] = "Host=localhost" })
+            .Build();
+
+        new IdentityModule().AddServices(services, configuration);
+
+        services.ShouldContain(service => service.ServiceType == typeof(FabricPilot.Contracts.Identity.IStaffDirectory));
+    }
 }

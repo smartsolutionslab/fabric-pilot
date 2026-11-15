@@ -1,4 +1,5 @@
 using System.Net;
+using FabricPilot.Contracts.Identity;
 using FabricPilot.Contracts.Tickets;
 using FabricPilot.Modules.Tickets.Application;
 using FabricPilot.Modules.Tickets.Application.Commands.AssignTicket;
@@ -10,6 +11,7 @@ public class AssignTicketTests
 {
     private readonly InMemoryTicketStore tickets = new();
     private readonly RecordingUnitOfWork unitOfWork;
+    private readonly IStaffDirectory staff = Substitute.For<IStaffDirectory>();
     private readonly Ticket ticket;
 
     public AssignTicketTests()
@@ -17,6 +19,7 @@ public class AssignTicketTests
         unitOfWork = new RecordingUnitOfWork(tickets);
         ticket = Ticket.Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.High, Customers.Developer, [], DateTimeOffset.UnixEpoch).Value;
         tickets.Saved.Add(ticket);
+        staff.IsStaffAsync("staff", Arg.Any<CancellationToken>()).Returns(true);
     }
 
     [Fact]
@@ -43,15 +46,38 @@ public class AssignTicketTests
     }
 
     [Fact]
-    public async Task An_assignee_the_ticket_refuses_is_answered_as_422_and_nothing_changes()
+    public async Task A_staff_members_name_around_spaces_is_checked_without_them()
     {
-        var result = await Handle(new AssignTicket(ticket.Id.Value, " "));
+        var result = await Handle(new AssignTicket(ticket.Id.Value, "  staff "));
+
+        result.IsSuccess.ShouldBeTrue();
+        ticket.Assignee.ShouldBe("staff");
+    }
+
+    /// <summary>A blank name, a user without the staff role and a name nobody has are all not a staff member.</summary>
+    [Theory]
+    [InlineData(" ")]
+    [InlineData("developer")]
+    [InlineData("nobody-at-all")]
+    public async Task An_assignee_who_is_not_a_staff_member_is_answered_as_422_and_nothing_changes(string assignee)
+    {
+        var result = await Handle(new AssignTicket(ticket.Id.Value, assignee));
 
         result.IsFailure.ShouldBeTrue();
-        result.Error.Code.ShouldBe("tickets.invalid-assignee");
+        result.Error.Code.ShouldBe("tickets.assignee-not-staff");
         result.Error.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         ticket.Assignee.ShouldBeNull();
         unitOfWork.Sent.ShouldBeEmpty();
+        unitOfWork.Commits.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task A_ticket_that_is_not_there_is_not_found_before_anyone_asks_who_the_staff_are()
+    {
+        var result = await Handle(new AssignTicket(Guid.CreateVersion7(), "staff"));
+
+        result.Error.Code.ShouldBe("tickets.ticket-not-found");
+        await staff.DidNotReceiveWithAnyArgs().IsStaffAsync(default!, default);
     }
 
     [Fact]
@@ -65,5 +91,5 @@ public class AssignTicketTests
     }
 
     private Task<Result<Unit, ApiError>> Handle(AssignTicket command) =>
-        new AssignTicketHandler(tickets, unitOfWork).HandleAsync(command, TestContext.Current.CancellationToken);
+        new AssignTicketHandler(tickets, unitOfWork, staff).HandleAsync(command, TestContext.Current.CancellationToken);
 }
