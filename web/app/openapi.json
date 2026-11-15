@@ -303,6 +303,46 @@
         }
       }
     },
+    "/contracts/contracts/{tenant}": {
+      "post": {
+        "tags": [
+          "Contracts"
+        ],
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordContract"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/documents/permissions/manage": {
       "get": {
         "tags": [
@@ -1518,6 +1558,31 @@
         "properties": {
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "RecordContract": {
+        "required": [
+          "product",
+          "startsOn",
+          "endsOn",
+          "renews"
+        ],
+        "type": "object",
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "endsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "renews": {
+            "type": "boolean"
           }
         }
       },
