@@ -5,13 +5,23 @@ using FabricPilot.Modules.Contracts.Domain.Contracts;
 
 namespace FabricPilot.Modules.Contracts.Tests;
 
-/// <summary>The contracts table of one tenant, in memory.</summary>
+/// <summary>The contracts table of one tenant, in memory; what is added counts as stored only once the unit of work commits.</summary>
 internal sealed class InMemoryContractStore : IContractStore
 {
+    private readonly List<Contract> pending = [];
+
     public List<Contract> Saved { get; } = [];
 
     /// <summary>The day the last renewal list was asked for.</summary>
     public DateOnly? AskedForRenewalsOn { get; private set; }
+
+    public void Add(Contract contract) => pending.Add(contract);
+
+    public void Commit()
+    {
+        Saved.AddRange(pending);
+        pending.Clear();
+    }
 
     public Task<PagedResult<ContractSummaryDto>> ListAsync(Sorting<ContractSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken)
     {
