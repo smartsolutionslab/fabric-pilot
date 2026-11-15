@@ -14,6 +14,9 @@ public static class IdentityPolicyNames
     /// <summary>Staff manage the admins of the tenant an endpoint's route names; not an <c>AcrossTenants()</c> endpoint (docs/adr).</summary>
     public const string ManageTenantAdmins = "identity.manage-tenant-admins";
 
+    /// <summary>Staff list the realm's staff, to pick a colleague from (docs/adr/0053).</summary>
+    public const string ListStaff = "identity.list-staff";
+
     /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
     public const string ReadAllTenants = "identity.read-all-tenants";
 

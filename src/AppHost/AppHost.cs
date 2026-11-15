@@ -22,6 +22,9 @@ var keycloakPassword = builder.AddResource(ParameterResourceBuilderExtensions.Cr
 // import (${FABRIC_PILOT_USER_ADMIN_SECRET} in realm.json), so no secret is committed. Letters and digits only: the value
 // lands inside a JSON string. A deployment sets it from its secret store (infra/keycloak-user-admin.md).
 var userAdminSecret = builder.AddResource(ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "keycloak-user-admin-secret", special: false));
+// Its second, read-only client, fabric-pilot-staff-reader, lists the staff role's members for other modules (docs/adr/0053);
+// its secret is generated and substituted the same way (${FABRIC_PILOT_STAFF_READER_SECRET}).
+var staffReaderSecret = builder.AddResource(ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "keycloak-staff-reader-secret", special: false));
 var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26.6")
     .WithArgs("start-dev", "--import-realm")
     .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
@@ -29,6 +32,7 @@ var keycloak = builder.AddContainer("keycloak", "quay.io/keycloak/keycloak", "26
     .WithEnvironment("KC_HEALTH_ENABLED", "true")
     // Not KC_-prefixed: Keycloak reads those as its own options.
     .WithEnvironment("FABRIC_PILOT_USER_ADMIN_SECRET", userAdminSecret)
+    .WithEnvironment("FABRIC_PILOT_STAFF_READER_SECRET", staffReaderSecret)
     .WithHttpEndpoint(port: 8080, targetPort: 8080)
     .WithHttpEndpoint(targetPort: 9000, name: "management")
     .WithHttpHealthCheck("/health/ready", endpointName: "management")
@@ -76,6 +80,8 @@ var host = builder.AddProject<Projects.Host>("host")
     .WithEnvironment("KeycloakAdmin__Realm", "fabric-pilot")
     .WithEnvironment("KeycloakAdmin__ClientId", "fabric-pilot-user-admin")
     .WithEnvironment("KeycloakAdmin__ClientSecret", userAdminSecret)
+    .WithEnvironment("KeycloakAdmin__StaffReaderClientId", "fabric-pilot-staff-reader")
+    .WithEnvironment("KeycloakAdmin__StaffReaderClientSecret", staffReaderSecret)
     .WithReference(messaging)
     .WaitFor(messaging)
     .WithReference(blobs)

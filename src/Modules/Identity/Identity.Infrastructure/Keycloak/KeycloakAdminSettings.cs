@@ -3,10 +3,12 @@ using Microsoft.Extensions.Configuration;
 namespace FabricPilot.Modules.Identity.Infrastructure.Keycloak;
 
 /// <summary>
-/// Where the realm's admin API is and the confidential client that calls it, from <c>KeycloakAdmin:*</c>. The AppHost
-/// provides them; the secret is its parameter <c>keycloak-user-admin-secret</c>, never a settings file.
+/// Where the realm's admin API is and the two confidential clients that call it, from <c>KeycloakAdmin:*</c>: the user
+/// admin, which manages a tenant's users, and the staff reader, which only lists the staff (docs/adr/0053). The AppHost
+/// provides them; the secrets are its parameters <c>keycloak-user-admin-secret</c> and
+/// <c>keycloak-staff-reader-secret</c>, never a settings file.
 /// </summary>
-public sealed record KeycloakAdminSettings(Uri BaseAddress, string Realm, string ClientId, string ClientSecret)
+public sealed record KeycloakAdminSettings(Uri BaseAddress, string Realm, KeycloakClientCredentials UserAdmin, KeycloakClientCredentials StaffReader)
 {
     private const string Section = "KeycloakAdmin";
 
@@ -23,8 +25,8 @@ public sealed record KeycloakAdminSettings(Uri BaseAddress, string Realm, string
         return new KeycloakAdminSettings(
             new Uri(baseAddress.EndsWith('/') ? baseAddress : baseAddress + "/", UriKind.Absolute),
             Required(configuration, "Realm"),
-            Required(configuration, "ClientId"),
-            Required(configuration, "ClientSecret"));
+            new KeycloakClientCredentials(Required(configuration, "ClientId"), Required(configuration, "ClientSecret")),
+            new KeycloakClientCredentials(Required(configuration, "StaffReaderClientId"), Required(configuration, "StaffReaderClientSecret")));
     }
 
     private static string Required(IConfiguration configuration, string key) =>
