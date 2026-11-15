@@ -26,5 +26,5 @@ public class TicketOrderingTests
     }
 
     private static Ticket Raised(string subject, DateTimeOffset at) =>
-        Ticket.Raise(TicketId.New(), subject, "Description", TicketPriority.Normal, [], at).Value;
+        Ticket.Raise(TicketId.New(), subject, "Description", TicketPriority.Normal, Customers.Developer, [], at).Value;
 }
