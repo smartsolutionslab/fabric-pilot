@@ -28,6 +28,13 @@ param smtpConnection string
 @description('The sender of the notifications module\'s e-mail (Notifications:SenderAddress).')
 param senderAddress string
 
+@description('The user the host signs in to the SMTP server as (AppHost parameter smtp-user-name); empty for a relay that needs no sign-in.')
+param smtpUserName string = ''
+
+@secure()
+@description('That user\'s password (AppHost parameter smtp-password), kept in Key Vault; empty without a user name.')
+param smtpPassword string = ''
+
 @description('The chat deployment (AppHost parameter azure-openai-deployment).')
 param chatDeploymentName string = 'gpt-5-mini'
 
@@ -109,6 +116,8 @@ module resources 'resources.bicep' = {
     tenants: tenants
     smtpConnection: smtpConnection
     senderAddress: senderAddress
+    smtpUserName: smtpUserName
+    smtpPassword: smtpPassword
     chatDeploymentName: chatDeploymentName
     chatModelVersion: chatModelVersion
     chatDeploymentSku: chatDeploymentSku

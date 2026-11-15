@@ -7,6 +7,7 @@ param principalId string
 param tenants string
 param smtpConnection string
 param senderAddress string
+param smtpUserName string
 param chatDeploymentName string
 param chatModelVersion string
 param chatDeploymentSku string
@@ -30,6 +31,8 @@ param keycloakUserAdminSecret string
 param keycloakStaffReaderSecret string
 @secure()
 param rabbitMqPassword string
+@secure()
+param smtpPassword string
 
 var token = uniqueString(subscription().id, resourceGroup().id, location)
 // Container Apps need an image before azd's first deploy replaces it.
@@ -138,6 +141,15 @@ resource keycloakStaffReaderSecretSecret 'Microsoft.KeyVault/vaults/secrets@2023
   parent: vault
   name: 'keycloak-staff-reader-secret'
   properties: { value: keycloakStaffReaderSecret }
+}
+
+// The SMTP server's password, only for one that requires sign-in: with a user name, the host signs in as that user.
+var smtpSignsIn = !empty(smtpUserName)
+
+resource smtpPasswordSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (smtpSignsIn) {
+  parent: vault
+  name: 'smtp-password'
+  properties: { value: smtpPassword }
 }
 
 resource postgresPasswordSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
@@ -394,13 +406,15 @@ resource keycloak 'Microsoft.App/containerApps@2025-01-01' = {
   dependsOn: [vaultRead]
 }
 
-var hostSecrets = [
+var hostSecrets = concat([
   { name: 'database-connection', keyVaultUrl: databaseConnection.properties.secretUri, identity: identity.id }
   { name: 'messaging-connection', keyVaultUrl: messagingConnection.properties.secretUri, identity: identity.id }
   { name: 'azure-openai-api-key', keyVaultUrl: openAiApiKey.properties.secretUri, identity: identity.id }
   { name: 'keycloak-user-admin-secret', keyVaultUrl: keycloakUserAdminSecretSecret.properties.secretUri, identity: identity.id }
   { name: 'keycloak-staff-reader-secret', keyVaultUrl: keycloakStaffReaderSecretSecret.properties.secretUri, identity: identity.id }
-]
+], smtpSignsIn ? [
+  { name: 'smtp-password', keyVaultUrl: smtpPasswordSecret!.properties.secretUri, identity: identity.id }
+] : [])
 
 // The settings the AppHost gives the host, by the same names (infra/check.sh compares them).
 var hostSettings = [
@@ -445,7 +459,11 @@ resource host 'Microsoft.App/containerApps@2025-01-01' = {
           name: 'host'
           image: empty(hostImageName) ? placeholderImage : hostImageName
           resources: { cpu: json('1'), memory: '2Gi' }
-          env: concat(hostSettings, tenantSettings)
+          // The SMTP sign-in only for a server that requires it; without it the host sends unauthenticated (SmtpSettings).
+          env: concat(hostSettings, smtpSignsIn ? [
+            { name: 'Notifications__SmtpUserName', value: smtpUserName }
+            { name: 'Notifications__SmtpPassword', secretRef: 'smtp-password' }
+          ] : [], tenantSettings)
         }
       ]
       scale: { minReplicas: 1, maxReplicas: 1 }
