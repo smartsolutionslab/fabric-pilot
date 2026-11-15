@@ -25,6 +25,9 @@ public class TicketsModuleTests
         // The host registers the project's IChatClient; a module's test stands in for it and never calls a real model.
         services.AddSingleton<Microsoft.Extensions.AI.IChatClient>(_ => new FabricPilot.Tests.Fakes.FakeChatClient("unused"));
 
+        // The host has the identity module register the staff directory the tickets module checks an assignee against.
+        services.AddSingleton(Substitute.For<FabricPilot.Contracts.Identity.IStaffDirectory>());
+
         new TicketsModule().AddServices(services, configuration);
         var buildContainer = () => services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }).Dispose();
 

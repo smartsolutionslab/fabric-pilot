@@ -23,5 +23,7 @@ public static class TicketsFailures
 
     public static ApiError TicketNotFound(Guid ticket) => new TicketNotFound(ticket);
 
+    public static ApiError AssigneeNotStaff(string assignee) => new AssigneeNotStaff(assignee);
+
     public static ApiError AttachmentNotFound(Guid ticket, Guid attachment) => new AttachmentNotFound(ticket, attachment);
 }

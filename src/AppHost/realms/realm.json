@@ -53,6 +53,18 @@
       "directAccessGrantsEnabled": false
     },
     {
+      "clientId": "fabric-pilot-staff-reader",
+      "description": "The identity module's read-only service account: lists the staff role's members (docs/adr/0053). Its secret is the AppHost's parameter keycloak-staff-reader-secret.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${FABRIC_PILOT_STAFF_READER_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
       "clientId": "fabric-pilot-web",
       "enabled": true,
       "publicClient": true,
@@ -189,6 +201,12 @@
       "clientRoles": { "realm-management": ["manage-users"] }
     },
     {
+      "username": "service-account-fabric-pilot-staff-reader",
+      "enabled": true,
+      "serviceAccountClientId": "fabric-pilot-staff-reader",
+      "clientRoles": { "realm-management": ["query-users", "view-realm"] }
+    },
+    {
       "username": "staff",
       "enabled": true,
       "email": "staff@example.com",
@@ -196,6 +214,16 @@
       "firstName": "Local",
       "lastName": "Staff",
       "credentials": [{ "type": "password", "value": "staff", "temporary": false }],
+      "realmRoles": ["staff"]
+    },
+    {
+      "username": "staff-b",
+      "enabled": true,
+      "email": "staff-b@example.com",
+      "emailVerified": true,
+      "firstName": "Second",
+      "lastName": "Staff",
+      "credentials": [{ "type": "password", "value": "staff-b", "temporary": false }],
       "realmRoles": ["staff"]
     }
   ]

@@ -51,6 +51,9 @@ test('switching tickets hides the previous ticket and its draft until the next o
     if (url.pathname === '/api/knowledge/suggested-answers') {
       return Promise.resolve(json(drafted));
     }
+    if (url.pathname === '/api/identity/staff') {
+      return Promise.resolve(json({ items: [], totalCount: 0, page: 1, pageSize: 100 }));
+    }
     return Promise.resolve(new Response(null, { status: 404 }));
   });
   vi.stubGlobal('fetch', fetch);

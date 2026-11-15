@@ -5,11 +5,11 @@ import { useAuth } from 'react-oidc-context';
 import {
   type StaffTicketDto,
   type TicketStatus,
+  useGetIdentityStaffQuery,
   usePutTicketsTicketsByTenantAndTicketIdAssigneeMutation,
   usePutTicketsTicketsByTenantAndTicketIdStatusMutation,
 } from '@/api/generated';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { colleagueSchema, statusSchema } from './triageSchema';
@@ -17,9 +17,13 @@ import { statusLabel, ticketStatuses } from './ticketStatuses';
 
 type Outcome = { done: string } | { failed: string } | undefined;
 
+/** The most staff the picker lists: one page at its largest size. */
+const staffPage = { page: 1, pageSize: 100 };
+
 /**
- * Staff move a ticket to another status or assign it, to themselves or to a colleague by user name, in the ticket's
- * own tenant. The customer who raised it is told of a status change; the page shows the ticket again once it changed.
+ * Staff move a ticket to another status or assign it, to themselves or to a colleague picked from the staff, in the
+ * ticket's own tenant. The customer who raised it is told of a status change; the page shows the ticket again once it
+ * changed.
  */
 export function TicketTriage({ ticket }: { ticket: StaffTicketDto }) {
   const { user } = useAuth();
@@ -27,6 +31,8 @@ export function TicketTriage({ ticket }: { ticket: StaffTicketDto }) {
   const [outcome, setOutcome] = useState<Outcome>();
   const [changeStatus, { isLoading: isChangingStatus }] = usePutTicketsTicketsByTenantAndTicketIdStatusMutation();
   const [assign, { isLoading: isAssigning }] = usePutTicketsTicketsByTenantAndTicketIdAssigneeMutation();
+  const staff = useGetIdentityStaffQuery(staffPage);
+  const colleagues = (staff.data?.items ?? []).filter((member) => member.userName !== me);
   const statusForm = useForm({
     resolver: zodResolver(statusSchema),
     defaultValues: { status: ticket.status as TicketStatus },
@@ -88,18 +94,31 @@ export function TicketTriage({ ticket }: { ticket: StaffTicketDto }) {
       ) : null}
       <form noValidate onSubmit={(event) => void onAssignColleague(event)} className="flex items-end gap-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="assignee">Colleague’s user name</Label>
-          <Input
+          <Label htmlFor="assignee">Colleague</Label>
+          <NativeSelect
             id="assignee"
+            disabled={!staff.data}
             aria-invalid={Boolean(colleagueError)}
             aria-describedby={colleagueError ? 'assignee-error' : undefined}
             {...colleagueForm.register('assignee')}
-          />
+          >
+            <option value="">Choose a colleague</option>
+            {colleagues.map(({ userName, firstName, lastName }) => (
+              <option key={userName} value={userName}>
+                {`${firstName} ${lastName} (${userName})`}
+              </option>
+            ))}
+          </NativeSelect>
         </div>
-        <Button type="submit" variant="outline" disabled={isAssigning}>
+        <Button type="submit" variant="outline" disabled={isAssigning || !staff.data}>
           Assign to colleague
         </Button>
       </form>
+      {staff.isError ? (
+        <p role="alert" className="text-sm text-destructive">
+          The staff could not be listed.
+        </p>
+      ) : null}
       {colleagueError ? (
         <p id="assignee-error" role="alert" className="text-sm text-destructive">
           {colleagueError.message}

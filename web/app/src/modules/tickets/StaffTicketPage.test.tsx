@@ -12,6 +12,11 @@ import {
 import { StaffTicketPage } from './StaffTicketPage';
 
 vi.mock('@/api/generated', () => ({
+  useGetIdentityStaffQuery: () => ({
+    data: { items: [], totalCount: 0, page: 1, pageSize: 100 },
+    isLoading: false,
+    isError: false,
+  }),
   useGetTicketsTicketsAllTenantsByTicketIdQuery: vi.fn(),
   usePostKnowledgeSuggestedAnswersMutation: vi.fn(),
   usePutTicketsTicketsByTenantAndTicketIdStatusMutation: () => [vi.fn(), { isLoading: false }],

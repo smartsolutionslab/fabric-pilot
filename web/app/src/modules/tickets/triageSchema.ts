@@ -1,16 +1,10 @@
 import { z } from 'zod';
 
-/** The ticket's own limit on an assignee's user name, as the API checks it (Ticket in the tickets module). */
-export const maximumAssigneeLength = 255;
-
 export const statusSchema = z.object({ status: z.enum(['Open', 'InProgress', 'Resolved', 'Closed']) });
 
+/** A colleague is picked from the staff by user name; the API refuses anyone else. */
 export const colleagueSchema = z.object({
-  assignee: z
-    .string()
-    .trim()
-    .min(1, 'Enter the colleague’s user name.')
-    .max(maximumAssigneeLength, `Keep the user name to ${maximumAssigneeLength} characters.`),
+  assignee: z.string().min(1, 'Choose a colleague.'),
 });
 
 export type StatusForm = z.input<typeof statusSchema>;

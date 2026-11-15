@@ -4,10 +4,10 @@ using System.Text.Json.Serialization;
 namespace FabricPilot.Modules.Identity.Infrastructure.Keycloak;
 
 /// <summary>
-/// The service account's access token (client credentials), minted on first use and kept until shortly before it
-/// expires, for every admin API call of the host.
+/// A client's service-account access token (client credentials), minted on first use and kept until shortly before it
+/// expires, for every admin API call the host makes as that client. One per client.
 /// </summary>
-public sealed class KeycloakAdminToken(IHttpClientFactory clients, KeycloakAdminSettings settings, TimeProvider time) : IDisposable
+public sealed class KeycloakAdminToken(IHttpClientFactory clients, KeycloakAdminSettings settings, KeycloakClientCredentials credentials, TimeProvider time) : IDisposable
 {
     /// <summary>The named HttpClient that mints the token.</summary>
     public const string ClientName = "keycloak-admin-token";
@@ -40,8 +40,8 @@ public sealed class KeycloakAdminToken(IHttpClientFactory clients, KeycloakAdmin
             using var form = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "client_credentials",
-                ["client_id"] = settings.ClientId,
-                ["client_secret"] = settings.ClientSecret,
+                ["client_id"] = credentials.ClientId,
+                ["client_secret"] = credentials.ClientSecret,
             });
             using var response = await client.PostAsync(settings.TokenEndpoint, form, cancellationToken);
             response.EnsureSuccessStatusCode();

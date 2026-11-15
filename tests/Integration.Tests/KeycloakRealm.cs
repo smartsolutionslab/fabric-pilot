@@ -61,10 +61,14 @@ public sealed class KeycloakRealm(AspireFixture aspire)
         (await FindAsync(username, cancellationToken))?.Id ?? throw new InvalidOperationException($"The realm has no user {username}.");
 
     /// <summary>The realm-management roles the identity module's service account holds, composites expanded.</summary>
-    public async Task<IReadOnlyList<string>> ServiceAccountAdminRolesAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<string>> ServiceAccountAdminRolesAsync(CancellationToken cancellationToken) =>
+        ServiceAccountAdminRolesAsync("fabric-pilot-user-admin", cancellationToken);
+
+    /// <summary>The realm-management roles the service account of the client holds, composites expanded.</summary>
+    public async Task<IReadOnlyList<string>> ServiceAccountAdminRolesAsync(string clientId, CancellationToken cancellationToken)
     {
         using var admin = await AdminAsync(cancellationToken);
-        var serviceAccount = await IdOfAsync("service-account-fabric-pilot-user-admin", cancellationToken);
+        var serviceAccount = await IdOfAsync($"service-account-{clientId}", cancellationToken);
         var clients = await admin.GetFromJsonAsync<Client[]>(new Uri($"{Realm}/clients?clientId=realm-management", UriKind.Relative), cancellationToken) ?? [];
         var roles = await admin.GetFromJsonAsync<Named[]>(new Uri($"{Realm}/users/{serviceAccount}/role-mappings/clients/{clients.Single().Id}/composite", UriKind.Relative), cancellationToken) ?? [];
         return [.. roles.Select(role => role.Name!).Order(StringComparer.Ordinal)];
