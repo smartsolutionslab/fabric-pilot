@@ -27,7 +27,7 @@ public class NotificationsTests(AspireFixture aspire)
         using var customer = await aspire.CreateHostClientAsync("developer");
         var ticketId = Guid.CreateVersion7();
         var subject = $"Printer offline {ticketId}";
-        var changed = new TicketStatusChangedV1(ticketId, subject, "Open", "Resolved", Subject(customer), "developer@example.com")
+        var changed = new TicketStatusChangedV1(ticketId, subject, "Open", "InProgress", Subject(customer), "developer@example.com")
         {
             Metadata = new EventMetadata(Guid.CreateVersion7(), TimeProvider.System.GetUtcNow(), "tenant-a"),
         };
@@ -38,7 +38,7 @@ public class NotificationsTests(AspireFixture aspire)
             await publisher.PublishAsync(changed);
 
             var notice = await Eventually(async () => NoticesFor(await Json(customer, Notices), ticketId).SingleOrDefault(), cancellationToken);
-            notice["text"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now Resolved.");
+            notice["text"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now in progress.");
         }
 
         var emails = await Eventually(async () => await EmailsAbout(subject, cancellationToken) is { Count: > 0 } found ? found : null, cancellationToken);
@@ -47,7 +47,8 @@ public class NotificationsTests(AspireFixture aspire)
         emails = await EmailsAbout(subject, cancellationToken);
         var email = emails.ShouldHaveSingleItem()!;
         email["To"]!.AsArray().Select(address => address!["Address"]!.GetValue<string>()).ShouldBe(["developer@example.com"]);
-        email["Subject"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now Resolved");
+        email["Subject"]!.GetValue<string>().ShouldBe($"Your ticket \"{subject}\" is now in progress");
+        (await EmailText(email["ID"]!.GetValue<string>(), cancellationToken)).ShouldContain("changed from open to in progress.");
         NoticesFor(await Json(customer, Notices), ticketId).ShouldHaveSingleItem();
     }
 
@@ -140,5 +141,13 @@ public class NotificationsTests(AspireFixture aspire)
         var query = Uri.EscapeDataString($"subject:\"{ticketSubject}\"");
         var found = await mailpit.GetFromJsonAsync<JsonObject>(new Uri($"/api/v1/search?query={query}", UriKind.Relative), cancellationToken);
         return [.. found!["messages"]!.AsArray().Select(message => message!.AsObject())];
+    }
+
+    /// <summary>The plain-text body of one message Mailpit caught, through its API.</summary>
+    private async Task<string> EmailText(string id, CancellationToken cancellationToken)
+    {
+        using var mailpit = new HttpClient { BaseAddress = aspire.App.GetEndpoint("mailpit", "http") };
+        var message = await mailpit.GetFromJsonAsync<JsonObject>(new Uri($"/api/v1/message/{id}", UriKind.Relative), cancellationToken);
+        return message!["Text"]!.GetValue<string>();
     }
 }
