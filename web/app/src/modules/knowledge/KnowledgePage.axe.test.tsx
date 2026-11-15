@@ -2,6 +2,7 @@ import { cleanup, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, test, vi } from 'vitest';
 import { axe } from 'vitest-axe';
+import { SignedInAsDeveloper } from '@/auth/SignedInAsDeveloper';
 import { examples } from './KnowledgePage.data';
 import { KnowledgePage } from './KnowledgePage';
 
@@ -66,11 +67,15 @@ afterEach(() => {
 });
 
 // The screen has rendered when render returns.
+// The screen renders for the local user developer, signed in, without the sign-in provider: the check sees the screen
+// as the developer does.
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <KnowledgePage />
-    </MemoryRouter>,
+    <SignedInAsDeveloper>
+      <MemoryRouter>
+        <KnowledgePage />
+      </MemoryRouter>
+    </SignedInAsDeveloper>,
   ).container;
 }
 
