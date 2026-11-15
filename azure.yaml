@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+# The Kundenportal on Azure Container Apps: azd provisions infra/main.bicep, then deploys the three services below, each
+# to the resource tagged with its name. infra/README.md says what to run.
+name: fabric-pilot
+requiredVersions:
+  # Container App Jobs as a deploy target (the migrations) arrived in 1.23.13.
+  azd: ">= 1.23.13"
+infra:
+  provider: bicep
+  path: infra
+  module: main
+services:
+  # The MigrationRunner, as a Container Apps job: deployed, then run to completion before the host is deployed.
+  migrations:
+    project: ./src/MigrationRunner
+    language: dotnet
+    host: containerapp
+    hooks:
+      postdeploy:
+        posix:
+          shell: sh
+          run: ../../infra/scripts/run-migrations.sh
+  host:
+    project: ./src/Host
+    language: dotnet
+    host: containerapp
+    uses:
+      - migrations
+  # The SPA, built with the deployed Keycloak's authority and served by nginx, which forwards /api to the host.
+  web:
+    project: ./web
+    language: docker
+    host: containerapp
+    docker:
+      path: ../infra/web/Dockerfile
+      context: ..
+      remoteBuild: true
+      buildArgs:
+        - VITE_OIDC_AUTHORITY=${KEYCLOAK_URL}/realms/fabric-pilot
+    uses:
+      - host

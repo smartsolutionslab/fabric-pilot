@@ -1,0 +1,12 @@
+# The build context is the repository root; only what the Dockerfile copies goes in.
+*
+!web/package.json
+!web/pnpm-lock.yaml
+!web/pnpm-workspace.yaml
+!web/app
+web/app/node_modules
+web/app/dist
+web/app/tsconfig.tsbuildinfo
+web/app/test-results
+web/app/playwright-report
+!infra/web/nginx.conf.template
