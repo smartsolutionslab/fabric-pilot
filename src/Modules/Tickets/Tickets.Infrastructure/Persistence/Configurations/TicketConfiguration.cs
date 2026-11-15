@@ -4,7 +4,10 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FabricPilot.Modules.Tickets.Infrastructure.Persistence.Configurations;
 
-/// <summary>One row per ticket, and one row per attachment in <c>ticket_attachments</c>, saved and read with it.</summary>
+/// <summary>
+/// One row per ticket, with the customer who raised it, and one row per attachment in <c>ticket_attachments</c>, saved
+/// and read with it.
+/// </summary>
 public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 {
     public void Configure(EntityTypeBuilder<Ticket> builder)
@@ -19,6 +22,17 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.Property(ticket => ticket.Priority).HasColumnName("priority").HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(ticket => ticket.RaisedAt).HasColumnName("raised_at").IsRequired();
         builder.HasIndex(ticket => ticket.RaisedAt);
+
+        // Tickets raised before staff triaged them had no status column; they are open.
+        builder.Property(ticket => ticket.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(16).HasDefaultValue(TicketStatus.Open).IsRequired();
+        builder.HasIndex(ticket => ticket.Status);
+        builder.Property(ticket => ticket.Assignee).HasColumnName("assignee").HasMaxLength(Ticket.MaximumAssigneeLength);
+        builder.OwnsOne(ticket => ticket.Customer, customer =>
+        {
+            customer.Property(raiser => raiser.UserId).HasColumnName("customer_user_id").HasMaxLength(TicketCustomer.MaximumUserIdLength).IsRequired();
+            customer.Property(raiser => raiser.Email).HasColumnName("customer_email").HasMaxLength(TicketCustomer.MaximumEmailLength).IsRequired();
+        });
+        builder.Navigation(ticket => ticket.Customer).IsRequired();
         builder.Ignore(ticket => ticket.DomainEvents);
         builder.OwnsMany(ticket => ticket.Attachments, attachments =>
         {

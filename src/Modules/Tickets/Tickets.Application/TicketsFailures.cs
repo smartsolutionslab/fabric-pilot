@@ -14,9 +14,12 @@ public static class TicketsFailures
         TooManyAttachments tooManyAttachments => ApiError.From(tooManyAttachments, HttpStatusCode.UnprocessableEntity),
         AttachmentTooLarge attachmentTooLarge => ApiError.From(attachmentTooLarge, HttpStatusCode.UnprocessableEntity),
         InvalidAttachmentName invalidAttachmentName => ApiError.From(invalidAttachmentName, HttpStatusCode.UnprocessableEntity),
+        InvalidAssignee invalidAssignee => ApiError.From(invalidAssignee, HttpStatusCode.UnprocessableEntity),
     };
 
     public static ApiError UnknownPriority(string priority) => new UnknownPriority(priority);
+
+    public static ApiError UnknownStatus(string status) => new UnknownStatus(status);
 
     public static ApiError TicketNotFound(Guid ticket) => new TicketNotFound(ticket);
 
