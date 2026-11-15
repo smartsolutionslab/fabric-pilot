@@ -12,6 +12,18 @@ namespace FabricPilot.Integration.Tests;
 /// <summary>The whole application, started once per test run on empty containers.</summary>
 public sealed class AspireFixture : IAsyncLifetime
 {
+    /// <summary>The one user the authenticating SMTP server (<see cref="AuthenticatingSmtp"/>) accepts mail from.</summary>
+    public const string SmtpUserName = "portal";
+
+    /// <summary>That user's password: a test's own, not a secret.</summary>
+    public const string SmtpPassword = "correct-horse";
+
+    /// <summary>
+    /// A second Mailpit, only in the tests, that accepts mail only from a signed-in client, as most providers do. The
+    /// AppHost's Mailpit stays open: Keycloak and local runs send to it without credentials.
+    /// </summary>
+    public const string AuthenticatingSmtp = "smtp-authenticating";
+
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(5);
 
     private DistributedApplication? app;
@@ -48,9 +60,18 @@ public sealed class AspireFixture : IAsyncLifetime
         // FakeChatClient a test gave it, else a 404.
         builder.Configuration["Parameters:azure-openai-endpoint"] = embeddings.Endpoint;
 
+        // Without TLS, which Mailpit does not offer: the sender is told it may send unencrypted, as it is for the AppHost's.
+        builder.AddContainer(AuthenticatingSmtp, "axllent/mailpit", "v1.33")
+            .WithEnvironment("MP_SMTP_AUTH", $"{SmtpUserName}:{SmtpPassword}")
+            .WithEnvironment("MP_SMTP_AUTH_ALLOW_INSECURE", "true")
+            .WithHttpEndpoint(targetPort: 8025)
+            .WithEndpoint(targetPort: 1025, name: "smtp")
+            .WithHttpHealthCheck("/livez");
+
         app = await builder.BuildAsync(timeout.Token);
         await app.StartAsync(timeout.Token);
         await app.ResourceNotifications.WaitForResourceHealthyAsync("host", timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync(AuthenticatingSmtp, timeout.Token);
     }
 
     public HttpClient CreateHostClient() => App.CreateHttpClient("host");

@@ -38,6 +38,47 @@ public class SmtpSettingsTests
         Should.Throw<InvalidOperationException>(() => SmtpSettings.From(new ConfigurationBuilder().Build()));
     }
 
+    [Fact]
+    public void A_user_name_and_a_password_sign_in_to_the_server()
+    {
+        var settings = SmtpSettings.From(Configuration(
+            "smtps://relay.example.com:465",
+            ("Notifications:SmtpUserName", "portal"),
+            ("Notifications:SmtpPassword", "correct-horse")));
+
+        settings.Credentials.ShouldBe(new SmtpCredentials("portal", "correct-horse"));
+    }
+
+    [Fact]
+    public void Without_a_user_name_and_a_password_the_server_is_not_signed_in_to()
+    {
+        var settings = SmtpSettings.From(Configuration("smtps://relay.example.com:465"));
+
+        settings.Credentials.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("Notifications:SmtpUserName", "portal")]
+    [InlineData("Notifications:SmtpPassword", "correct-horse")]
+    public void A_user_name_without_a_password_or_a_password_without_a_user_name_is_refused(string key, string value)
+    {
+        Should.Throw<InvalidOperationException>(() => SmtpSettings.From(Configuration("smtps://relay.example.com:465", (key, value))));
+    }
+
+    [Fact]
+    public void The_settings_name_the_user_but_never_show_the_password()
+    {
+        var settings = SmtpSettings.From(Configuration(
+            "smtps://relay.example.com:465",
+            ("Notifications:SmtpUserName", "portal"),
+            ("Notifications:SmtpPassword", "correct-horse")));
+
+        var text = settings.ToString();
+
+        text.ShouldContain("portal");
+        text.ShouldNotContain("correct-horse");
+    }
+
     private static IConfiguration Configuration(string connection, params (string Key, string Value)[] more)
     {
         Dictionary<string, string?> values = new()
