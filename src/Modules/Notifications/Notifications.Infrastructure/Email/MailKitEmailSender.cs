@@ -6,8 +6,9 @@ using MimeKit;
 namespace FabricPilot.Modules.Notifications.Infrastructure.Email;
 
 /// <summary>
-/// Sends each e-mail over its own SMTP connection, encrypted as <see cref="SmtpSettings"/> says. E-mail is hand-written
-/// in this repository until the catalog offers it.
+/// Sends each e-mail over its own SMTP connection, encrypted as <see cref="SmtpSettings"/> says and signed in to with its
+/// credentials when it has them. A server that refuses them fails the send like any other delivery failure. E-mail is
+/// hand-written in this repository until the catalog offers it.
 /// </summary>
 public sealed class MailKitEmailSender(SmtpSettings settings) : IEmailSender
 {
@@ -24,6 +25,11 @@ public sealed class MailKitEmailSender(SmtpSettings settings) : IEmailSender
         // Per network operation; the caller's token bounds the whole send.
         using var client = new SmtpClient { Timeout = (int)TimeSpan.FromSeconds(30).TotalMilliseconds };
         await client.ConnectAsync(settings.Host, settings.Port, settings.Security, cancellationToken);
+        if (settings.Credentials is { } credentials)
+        {
+            await client.AuthenticateAsync(credentials.UserName, credentials.Password, cancellationToken);
+        }
+
         await client.SendAsync(email, cancellationToken);
         await client.DisconnectAsync(quit: true, cancellationToken);
     }
