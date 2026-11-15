@@ -20,5 +20,6 @@ public sealed class BillingPolicies : IModulePolicies
         policies.AddPolicy(BillingPolicyNames.ReadInvoices, policy => policy.RequireRole("customer-user"));
         policies.AddPolicy(BillingPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(BillingPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(BillingPolicyNames.WriteForTenants, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

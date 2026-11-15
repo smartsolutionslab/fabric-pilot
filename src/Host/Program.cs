@@ -19,7 +19,10 @@ builder.Services.AddAzureOpenAIEmbeddingGenerator(builder.Configuration);
 builder.Services.AddModuleVectorIndexes(builder.Configuration);
 builder.Services.AddDispatcher();
 builder.Services.AddTenancy();
+builder.Services.AddTenantDirectory();
 builder.Services.AddMessaging(builder.Configuration, modules);
+// An agent's tool reads the HTTP request it runs in, to check its caller against the endpoints that send its request.
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
@@ -37,6 +40,8 @@ app.MapGet("/me", (System.Security.Claims.ClaimsPrincipal user) => TypedResults.
     .RequireAuthorization();
 app.MapGet("/me/tenant", (FabricPilot.BuildingBlocks.Tenancy.ITenantContext tenant) => TypedResults.Ok(new FabricPilot.Host.CurrentTenant(tenant.TenantId)))
     .RequireAuthorization();
+app.MapGet("/tenants", (Page? page, PageSize? pageSize, FabricPilot.BuildingBlocks.Tenancy.ITenantDirectory directory) => TypedResults.Ok(directory.List(page ?? Page.First, pageSize ?? PageSize.Default)))
+    .RequireAuthorization(FabricPilot.BuildingBlocks.Tenancy.TenantDirectoryPolicies.ListTenants);
 foreach (var module in modules)
 {
     module.MapEndpoints(app);

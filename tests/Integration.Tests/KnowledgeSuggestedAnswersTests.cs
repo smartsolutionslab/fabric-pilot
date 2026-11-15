@@ -67,7 +67,7 @@ public class KnowledgeSuggestedAnswersTests(AspireFixture aspire)
         var id = await WriteAndPublishAsync(staff, $"Guidance {word}", $"Previous guidance {word} restart the router.");
         using var model = new FakeChatClient("""{"answered":false,"answer":"","sources":[]}""");
         using var answering = aspire.Model.Answer(word, model);
-        using var slowEmbeddings = aspire.Model.Hold(held);
+        using var slowEmbeddings = aspire.Embeddings.Hold(held);
         var editing = staff.PutAsJsonAsync(new Uri($"{Articles}/{id}", UriKind.Relative), new { title = $"Guidance {word}", body = $"Current guidance {word} {held} call support." }, TestContext.Current.CancellationToken);
         await slowEmbeddings.Arrived.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 

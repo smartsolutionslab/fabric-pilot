@@ -1,32 +1,33 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using FabricPilot.BuildingBlocks.Rag;
 using FabricPilot.Tests.Fakes;
 using Microsoft.Extensions.AI;
 
 namespace FabricPilot.Integration.Tests;
 
 /// <summary>
-/// An OpenAI-compatible model on the loopback interface, so no test calls a real one. Embeddings are answered with
-/// <see cref="FakeEmbeddingGenerator"/>'s vectors, so the host can index and search. A chat request is answered by the
-/// <see cref="FakeChatClient"/> a test registered for a word its messages contain, and that client keeps what it was
-/// asked; a chat request no test answers is a 404, as a model the host cannot reach. The host reaches the server as its
-/// <c>azure-openai-endpoint</c>, which ends in <c>/v1</c> and is therefore used as is.
+/// An OpenAI-compatible chat model on the loopback interface, so no test calls a real one. A chat request is answered by
+/// the <see cref="FakeChatClient"/> a test registered for a word its messages contain, and that client keeps what it was
+/// asked; a chat request no test answers is a 404, as a model the host cannot reach. Every other request, embeddings
+/// included, is passed on unchanged to the generated <see cref="FakeEmbeddingsServer"/>, since the chat model and the
+/// embeddings share the host's <c>azure-openai-endpoint</c>. That endpoint ends in <c>/v1</c> and is therefore used as is.
 /// </summary>
 public sealed class FakeModelServer : IAsyncDisposable
 {
     private readonly HttpListener listener = new();
-    private readonly FakeEmbeddingGenerator generator = new(VectorTables.Dimensions);
+    private readonly HttpClient embeddings;
     private readonly CancellationTokenSource stopping = new();
-    private readonly ConcurrentDictionary<string, HeldEmbeddings> held = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, FakeChatClient> chats = new(StringComparer.OrdinalIgnoreCase);
     private readonly Task serving;
 
-    public FakeModelServer()
+    /// <param name="embeddingsEndpoint">The <see cref="FakeEmbeddingsServer.Endpoint"/> every request but a chat goes on to.</param>
+    public FakeModelServer(string embeddingsEndpoint)
     {
+        embeddings = new HttpClient { BaseAddress = new Uri(embeddingsEndpoint) };
         var port = FreePort();
         listener.Prefixes.Add($"http://127.0.0.1:{port}/");
         listener.Start();
@@ -36,17 +37,6 @@ public sealed class FakeModelServer : IAsyncDisposable
 
     /// <summary>The value for the AppHost's parameter <c>azure-openai-endpoint</c>.</summary>
     public string Endpoint { get; }
-
-    /// <summary>
-    /// Holds back the answer to every request whose text contains the word until released, as a slow provider would, so a
-    /// test can act while the host waits in the middle of indexing.
-    /// </summary>
-    public HeldEmbeddings Hold(string word)
-    {
-        var holding = new HeldEmbeddings();
-        held[word] = holding;
-        return holding;
-    }
 
     /// <summary>
     /// Answers every chat request whose messages contain the word with the client, until the returned registration is
@@ -64,7 +54,7 @@ public sealed class FakeModelServer : IAsyncDisposable
         listener.Stop();
         await serving;
         listener.Close();
-        generator.Dispose();
+        embeddings.Dispose();
         stopping.Dispose();
     }
 
@@ -73,26 +63,6 @@ public sealed class FakeModelServer : IAsyncDisposable
         using var probe = new TcpListener(IPAddress.Loopback, 0);
         probe.Start();
         return ((IPEndPoint)probe.LocalEndpoint).Port;
-    }
-
-    private static IReadOnlyList<string> Inputs(JsonNode request) =>
-        request["input"] switch
-        {
-            JsonArray inputs => [.. inputs.Select(input => input!.GetValue<string>())],
-            JsonValue input => [input.GetValue<string>()],
-            _ => [],
-        };
-
-    private static JsonNode Encoded(ReadOnlyMemory<float> vector, bool base64)
-    {
-        if (!base64)
-        {
-            return new JsonArray([.. vector.ToArray().Select(value => (JsonNode)value)]);
-        }
-
-        var bytes = new byte[vector.Length * sizeof(float)];
-        Buffer.BlockCopy(vector.ToArray(), 0, bytes, 0, bytes.Length);
-        return Convert.ToBase64String(bytes);
     }
 
     private async Task ServeAsync()
@@ -135,47 +105,32 @@ public sealed class FakeModelServer : IAsyncDisposable
     private async Task AnswerAsync(HttpListenerContext context)
     {
         using var response = context.Response;
-        var path = context.Request.Url?.AbsolutePath.TrimEnd('/');
-        if (context.Request.HttpMethod == "POST" && path == "/v1/chat/completions")
+        if (context.Request.HttpMethod == "POST" && context.Request.Url?.AbsolutePath.TrimEnd('/') == "/v1/chat/completions")
         {
             await ChatAsync(context.Request, response);
             return;
         }
 
-        if (context.Request.HttpMethod != "POST" || path != "/v1/embeddings")
-        {
-            response.StatusCode = (int)HttpStatusCode.NotFound;
-            return;
-        }
+        await PassOnAsync(context.Request, response);
+    }
 
-        var request = await JsonNode.ParseAsync(context.Request.InputStream) ?? new JsonObject();
-        var inputs = Inputs(request);
-        var base64 = request["encoding_format"]?.GetValue<string>() == "base64";
-        foreach (var (word, holding) in held)
+    /// <summary>Sends the request on to the embeddings stand-in, both endpoints ending in <c>/v1</c>, and copies its answer back.</summary>
+    private async Task PassOnAsync(HttpListenerRequest request, HttpListenerResponse response)
+    {
+        using var passedOn = new HttpRequestMessage(new HttpMethod(request.HttpMethod), request.Url?.PathAndQuery);
+        if (request.HasEntityBody)
         {
-            if (inputs.Any(input => input.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            passedOn.Content = new StreamContent(request.InputStream);
+            if (request.ContentType is not null)
             {
-                await holding.WaitAsync();
+                passedOn.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(request.ContentType);
             }
         }
 
-        var embeddings = await generator.GenerateAsync(inputs);
-        var answer = new JsonObject
-        {
-            ["object"] = "list",
-            ["data"] = new JsonArray([.. embeddings.Select((embedding, index) => (JsonNode)new JsonObject
-            {
-                ["object"] = "embedding",
-                ["index"] = index,
-                ["embedding"] = Encoded(embedding.Vector, base64),
-            })]),
-            ["model"] = request["model"]?.GetValue<string>() ?? "fake-embeddings",
-            ["usage"] = new JsonObject { ["prompt_tokens"] = 0, ["total_tokens"] = 0 },
-        };
-
-        response.StatusCode = (int)HttpStatusCode.OK;
-        response.ContentType = "application/json";
-        await JsonSerializer.SerializeAsync(response.OutputStream, answer);
+        using var answer = await embeddings.SendAsync(passedOn);
+        response.StatusCode = (int)answer.StatusCode;
+        response.ContentType = answer.Content.Headers.ContentType?.ToString();
+        await answer.Content.CopyToAsync(response.OutputStream);
     }
 
     private async Task ChatAsync(HttpListenerRequest request, HttpListenerResponse response)
@@ -215,28 +170,5 @@ public sealed class FakeModelServer : IAsyncDisposable
     private sealed class Registration(Action end) : IDisposable
     {
         public void Dispose() => end();
-    }
-
-    /// <summary>An answer held back: <see cref="Arrived"/> completes once a request for it came in, and disposing releases it.</summary>
-    public sealed class HeldEmbeddings : IDisposable
-    {
-        private readonly TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private readonly TaskCompletionSource released = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private int waiting;
-
-        public Task Arrived => arrived.Task;
-
-        /// <summary>How many requests are being held back now.</summary>
-        public int Waiting => Volatile.Read(ref waiting);
-
-        public void Dispose() => released.TrySetResult();
-
-        internal async Task WaitAsync()
-        {
-            Interlocked.Increment(ref waiting);
-            arrived.TrySetResult();
-            await released.Task;
-            Interlocked.Decrement(ref waiting);
-        }
     }
 }

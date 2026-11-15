@@ -4,6 +4,7 @@ import { type TicketSummaryDto, useGetTicketsTicketsQuery } from '@/api/generate
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { columnsOf } from '@/components/ui/data-table-columns';
+import { useCanManage } from './useCanManage';
 
 const pageSize = 20;
 const none: TicketSummaryDto[] = [];
@@ -21,6 +22,7 @@ const columns = tickets.columns([
 
 /** The customer's tenant's tickets, newest first. */
 export function TicketsPage() {
+  const permission = useCanManage();
   const [page, setPage] = useState(1);
   const { data, isError } = useGetTicketsTicketsQuery({ page, pageSize });
 
@@ -32,6 +34,8 @@ export function TicketsPage() {
           <Link to="new">Raise a ticket</Link>
         </Button>
       </div>
+      {permission === 'granted' && <h2>Manage</h2>}
+      {permission === 'failed' && <p role="alert">Permissions for tickets could not be loaded.</p>}
       {isError ? <p role="alert">The tickets could not be loaded.</p> : null}
       <DataTable
         columns={columns}

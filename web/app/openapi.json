@@ -43,6 +43,66 @@
         }
       }
     },
+    "/tenants": {
+      "get": {
+        "tags": [
+          "Host"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "maximum": 21474837,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfstring"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/billing/permissions/manage": {
+      "get": {
+        "tags": [
+          "Host"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/billing/invoices": {
       "get": {
         "tags": [
@@ -121,6 +181,25 @@
               "application/pdf": {
                 "schema": {
                   "$ref": "#/components/schemas/Stream"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contracts/permissions/manage": {
+      "get": {
+        "tags": [
+          "Host"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDto"
                 }
               }
             }
@@ -224,40 +303,10 @@
         }
       }
     },
-    "/identity/tenants/{tenantId}/admins": {
+    "/documents/permissions/manage": {
       "get": {
         "tags": [
-          "Identity"
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "maximum": 21474837,
-              "minimum": 1,
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer",
-              "format": "int32"
-            }
-          }
+          "Host"
         ],
         "responses": {
           "200": {
@@ -265,214 +314,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfTenantUserDto"
+                  "$ref": "#/components/schemas/PermissionDto"
                 }
               }
             }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Identity"
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdminInvitationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/identity/tenants/{tenantId}/admins/{userId}/role": {
-      "put": {
-        "tags": [
-          "Identity"
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RoleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
-    "/identity/users": {
-      "get": {
-        "tags": [
-          "Identity"
-        ],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "maximum": 21474837,
-              "minimum": 1,
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfTenantUserDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Identity"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InvitationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "format": "uuid"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/identity/users/{userId}/role": {
-      "put": {
-        "tags": [
-          "Identity"
-        ],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RoleRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
-    "/identity/users/{userId}/invitation": {
-      "put": {
-        "tags": [
-          "Identity"
-        ],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
           }
         }
       }
@@ -628,6 +473,25 @@
         }
       }
     },
+    "/knowledge/permissions/manage": {
+      "get": {
+        "tags": [
+          "Host"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/knowledge/suggested-answers": {
       "post": {
         "tags": [
@@ -765,6 +629,25 @@
         }
       }
     },
+    "/notifications/permissions/manage": {
+      "get": {
+        "tags": [
+          "Host"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/notifications/notices": {
       "get": {
         "tags": [
@@ -799,6 +682,25 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedResultOfNoticeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tickets/permissions/manage": {
+      "get": {
+        "tags": [
+          "Host"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissionDto"
                 }
               }
             }
@@ -1086,25 +988,6 @@
   },
   "components": {
     "schemas": {
-      "AdminInvitationRequest": {
-        "required": [
-          "email",
-          "firstName",
-          "lastName"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string"
-          },
-          "firstName": {
-            "type": "string"
-          },
-          "lastName": {
-            "type": "string"
-          }
-        }
-      },
       "ArticleContent": {
         "required": [
           "title",
@@ -1306,29 +1189,6 @@
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/IFormFile"
-        }
-      },
-      "InvitationRequest": {
-        "required": [
-          "email",
-          "firstName",
-          "lastName",
-          "role"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string"
-          },
-          "firstName": {
-            "type": "string"
-          },
-          "lastName": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          }
         }
       },
       "InvoiceSortField": {
@@ -1568,7 +1428,7 @@
           }
         }
       },
-      "PagedResultOfTenantUserDto": {
+      "PagedResultOfstring": {
         "required": [
           "items",
           "totalCount",
@@ -1580,7 +1440,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TenantUserDto"
+              "type": "string"
             }
           },
           "totalCount": {
@@ -1650,13 +1510,13 @@
           }
         }
       },
-      "RoleRequest": {
+      "PermissionDto": {
         "required": [
-          "role"
+          "name"
         ],
         "type": "object",
         "properties": {
-          "role": {
+          "name": {
             "type": "string"
           }
         }
@@ -1717,37 +1577,6 @@
           },
           "title": {
             "type": "string"
-          }
-        }
-      },
-      "TenantUserDto": {
-        "required": [
-          "id",
-          "email",
-          "firstName",
-          "lastName",
-          "roles"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "email": {
-            "type": "string"
-          },
-          "firstName": {
-            "type": "string"
-          },
-          "lastName": {
-            "type": "string"
-          },
-          "roles": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         }
       },
@@ -1838,9 +1667,6 @@
     },
     {
       "name": "Host"
-    },
-    {
-      "name": "Identity"
     },
     {
       "name": "Knowledge"
