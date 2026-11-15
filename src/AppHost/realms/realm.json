@@ -2,6 +2,7 @@
   "realm": "fabric-pilot",
   "enabled": true,
   "registrationAllowed": false,
+  "adminEventsEnabled": true,
   "smtpServer": {
     "host": "mailpit",
     "port": "1025",
@@ -38,6 +39,18 @@
       "clientId": "fabric-pilot-api",
       "enabled": true,
       "bearerOnly": true
+    },
+    {
+      "clientId": "fabric-pilot-user-admin",
+      "description": "The identity module's service account: manages a tenant's users through the admin API. Its secret is the AppHost's parameter keycloak-user-admin-secret.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${FABRIC_PILOT_USER_ADMIN_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false
     },
     {
       "clientId": "fabric-pilot-web",
@@ -157,6 +170,23 @@
       "credentials": [{ "type": "password", "value": "analyst", "temporary": false }],
       "attributes": { "department": ["finance"] },
       "groups": ["/tenants/tenant-a"]
+    },
+    {
+      "username": "tenant-b-admin",
+      "enabled": true,
+      "email": "tenant-b-admin@example.com",
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Tenant B Admin",
+      "credentials": [{ "type": "password", "value": "tenant-b-admin", "temporary": false }],
+      "realmRoles": ["customer-admin"],
+      "groups": ["/tenants/tenant-b"]
+    },
+    {
+      "username": "service-account-fabric-pilot-user-admin",
+      "enabled": true,
+      "serviceAccountClientId": "fabric-pilot-user-admin",
+      "clientRoles": { "realm-management": ["manage-users"] }
     },
     {
       "username": "staff",
