@@ -1142,6 +1142,27 @@
             "schema": {
               "$ref": "#/components/schemas/SortDirection"
             }
+          },
+          {
+            "name": "tenant",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TicketStatus"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TicketPriority"
+            }
           }
         ],
         "responses": {
@@ -1150,7 +1171,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResultOfTicketSummaryDto"
+                  "$ref": "#/components/schemas/PagedResultOfQueuedTicketDto"
                 }
               }
             }
@@ -1180,10 +1201,92 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TicketDto"
+                  "$ref": "#/components/schemas/StaffTicketDto"
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/tickets/tickets/{tenant}/{ticketId}/status": {
+      "put": {
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketStatusChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/tickets/tickets/{tenant}/{ticketId}/assignee": {
+      "put": {
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketAssignment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           }
         }
       }
@@ -1742,6 +1845,47 @@
           }
         }
       },
+      "PagedResultOfQueuedTicketDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueuedTicketDto"
+            }
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "PagedResultOfstring": {
         "required": [
           "items",
@@ -1876,6 +2020,55 @@
           }
         }
       },
+      "QueuedTicketDto": {
+        "required": [
+          "id",
+          "tenant",
+          "subject",
+          "priority",
+          "status",
+          "assignee",
+          "raisedAt",
+          "attachmentCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenant": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "raisedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attachmentCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "RoleRequest": {
         "required": [
           "role"
@@ -1892,6 +2085,57 @@
           "Ascending",
           "Descending"
         ]
+      },
+      "StaffTicketDto": {
+        "required": [
+          "id",
+          "tenant",
+          "subject",
+          "description",
+          "priority",
+          "status",
+          "assignee",
+          "raisedAt",
+          "attachments"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenant": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "raisedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttachmentDto"
+            }
+          }
+        }
       },
       "Stream": {
         "type": "string",
@@ -1977,6 +2221,17 @@
           }
         }
       },
+      "TicketAssignment": {
+        "required": [
+          "assignee"
+        ],
+        "type": "object",
+        "properties": {
+          "assignee": {
+            "type": "string"
+          }
+        }
+      },
       "TicketDto": {
         "required": [
           "id",
@@ -2013,11 +2268,38 @@
           }
         }
       },
+      "TicketPriority": {
+        "enum": [
+          "Low",
+          "Normal",
+          "High",
+          "Urgent"
+        ]
+      },
       "TicketSortField": {
         "enum": [
           "RaisedAt",
           "Subject"
         ]
+      },
+      "TicketStatus": {
+        "enum": [
+          "Open",
+          "InProgress",
+          "Resolved",
+          "Closed"
+        ]
+      },
+      "TicketStatusChange": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
       },
       "TicketSummaryDto": {
         "required": [
