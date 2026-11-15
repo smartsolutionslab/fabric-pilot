@@ -3,12 +3,13 @@ import { Link, useParams } from 'react-router';
 import { z } from 'zod';
 import { useGetTicketsTicketsAllTenantsByTicketIdQuery } from '@/api/generated';
 import { SuggestedAnswer } from './SuggestedAnswer';
+import { TicketTriage } from './TicketTriage';
 
 const ticketIdSchema = z.uuid();
 
 /**
- * One tenant's ticket as staff read it, across tenants, with an answer to suggest. Read only: its files are listed but
- * stay the tenant's to download.
+ * One tenant's ticket as staff read it, across tenants, with an answer to suggest and its triage. Its files are listed
+ * but stay the tenant's to download.
  */
 export function StaffTicketPage() {
   const ticketId = ticketIdSchema.safeParse(useParams().ticketId);
@@ -37,12 +38,16 @@ export function StaffTicketPage() {
       <Link to="..">Back to the tickets</Link>
       <h1 className="text-2xl font-semibold">{ticket.subject}</h1>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <dt className="font-medium">Tenant</dt>
+        <dd>{ticket.tenant}</dd>
         <dt className="font-medium">Priority</dt>
         <dd>{ticket.priority}</dd>
         <dt className="font-medium">Raised</dt>
         <dd>{new Date(ticket.raisedAt).toLocaleString()}</dd>
       </dl>
       <p className="whitespace-pre-wrap">{ticket.description}</p>
+      {/* Keyed by the ticket, so another ticket starts from its own status. */}
+      <TicketTriage key={ticket.id} ticket={ticket} />
       <h2 className="text-lg font-semibold">Attachments</h2>
       {ticket.attachments.length === 0 ? (
         <p>No attachments.</p>
