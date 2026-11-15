@@ -20,5 +20,6 @@ public sealed class IdentityPolicies : IModulePolicies
         policies.AddPolicy(IdentityPolicyNames.ManageTenantAdmins, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(IdentityPolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(IdentityPolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(IdentityPolicyNames.WriteForTenants, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

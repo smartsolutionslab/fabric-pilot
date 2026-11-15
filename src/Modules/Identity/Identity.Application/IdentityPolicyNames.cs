@@ -19,4 +19,7 @@ public static class IdentityPolicyNames
 
     /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
     public const string WriteSharedRecords = "identity.write-shared-records";
+
+    /// <summary>Staff write into the tenant the route names: name it on an endpoint mapped with <c>ForTenant()</c>.</summary>
+    public const string WriteForTenants = "identity.write-for-tenants";
 }
