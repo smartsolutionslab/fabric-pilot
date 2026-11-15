@@ -4,6 +4,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" VersionOverride="11.0.0" />
   </ItemGroup>
 
 </Project>
