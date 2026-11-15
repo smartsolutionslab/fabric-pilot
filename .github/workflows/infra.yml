@@ -1,0 +1,28 @@
+name: infra
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# One run per workflow and ref; a newer push to a pull request cancels the run before it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # The Azure deployment (azure.yaml, infra/), checked without Azure: every Bicep file builds with no error or warning,
+  # and azure.yaml and the Bicep agree with the AppHost (infra/check.sh says what it compares).
+  bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the Bicep CLI
+        run: az bicep install --version v0.38.33
+      - name: Check the deployment
+        run: |
+          yq --version
+          BICEP="$HOME/.azure/bin/bicep" bash infra/check.sh
