@@ -2,6 +2,8 @@
 
 The local realm (`src/AppHost/realms/realm.json`) is imported on first start and is for development only. A deployed realm is not imported, so the two confidential clients the `identity` module uses are set up there by hand, once per deployment, and kept in step with the local ones: `fabric-pilot-user-admin`, which manages a tenant's users (#14, docs/adr/0052), and `fabric-pilot-staff-reader`, which only lists the staff (#54, docs/adr/0053).
 
+On Azure (`infra/README.md`, step 6), `infra/keycloak/create-realm.sh` does the steps below once, all but the SMTP server (step 5), when it creates the deployed realm from the local one without its users, with the secrets Key Vault holds for the host. Keycloak imports nothing on start there either. The steps stay the reference: check the script's result against them, or follow them by hand instead.
+
 ## In the deployed realm
 
 1. **Clients → Create client**: client ID `fabric-pilot-user-admin`, OpenID Connect.
