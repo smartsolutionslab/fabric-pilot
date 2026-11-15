@@ -2,7 +2,7 @@
 # to the host as the Vite dev server does locally (web/app/vite.config.ts). azd builds it with the repository root as
 # the context; Dockerfile.dockerignore keeps the context to web/ and this directory.
 
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /web
 RUN corepack enable
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
