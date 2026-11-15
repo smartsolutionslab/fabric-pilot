@@ -26,4 +26,22 @@ public sealed class ContractStore(ContractsDbContext context) : IContractStore
             .ToListAsync(cancellationToken);
         return new PagedResult<ContractSummaryDto>(items, total, page.Value, pageSize.Value);
     }
+
+    /// <summary>Inside <c>AcrossTenants()</c> the query filter lets every tenant's rows through.</summary>
+    public async Task<PagedResult<ContractSummaryDto>> ListUpForRenewalAsync(DateOnly today, Page page, PageSize pageSize, CancellationToken cancellationToken)
+    {
+        Ensure.That(page).IsNotNull();
+        Ensure.That(pageSize).IsNotNull();
+
+        var contracts = context.Set<Contract>().AsNoTracking().Where(Contract.UpForRenewal(today));
+        var total = await contracts.CountAsync(cancellationToken);
+        var items = await contracts
+            .OrderBy(contract => contract.RenewsOn)
+            .ThenBy(contract => contract.Id)
+            .Skip(page.Skip(pageSize))
+            .Take(pageSize.Value)
+            .Select(ContractMappings.ToContractSummaryDtoExpression())
+            .ToListAsync(cancellationToken);
+        return new PagedResult<ContractSummaryDto>(items, total, page.Value, pageSize.Value);
+    }
 }

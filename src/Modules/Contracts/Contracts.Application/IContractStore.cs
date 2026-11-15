@@ -8,4 +8,7 @@ public interface IContractStore
 {
     /// <summary>One page of contract summaries in the order asked for, projected in the database.</summary>
     Task<PagedResult<ContractSummaryDto>> ListAsync(Sorting<ContractSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken);
+
+    /// <summary>One page of the contracts up for renewal on <paramref name="today"/>, the soonest to renew first.</summary>
+    Task<PagedResult<ContractSummaryDto>> ListUpForRenewalAsync(DateOnly today, Page page, PageSize pageSize, CancellationToken cancellationToken);
 }

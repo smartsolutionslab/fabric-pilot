@@ -10,6 +10,9 @@ internal sealed class InMemoryContractStore : IContractStore
 {
     public List<Contract> Saved { get; } = [];
 
+    /// <summary>The day the last renewal list was asked for.</summary>
+    public DateOnly? AskedForRenewalsOn { get; private set; }
+
     public Task<PagedResult<ContractSummaryDto>> ListAsync(Sorting<ContractSortField> sorting, Page page, PageSize pageSize, CancellationToken cancellationToken)
     {
         Ensure.That(sorting).IsNotNull();
@@ -22,5 +25,21 @@ internal sealed class InMemoryContractStore : IContractStore
             .Take(pageSize.Value)
             .Select(ContractMappings.ToContractSummaryDtoExpression());
         return Task.FromResult(new PagedResult<ContractSummaryDto>([.. items], Saved.Count, page.Value, pageSize.Value));
+    }
+
+    public Task<PagedResult<ContractSummaryDto>> ListUpForRenewalAsync(DateOnly today, Page page, PageSize pageSize, CancellationToken cancellationToken)
+    {
+        Ensure.That(page).IsNotNull();
+        Ensure.That(pageSize).IsNotNull();
+
+        AskedForRenewalsOn = today;
+        var upForRenewal = Saved.AsQueryable().Where(Contract.UpForRenewal(today));
+        var items = upForRenewal
+            .OrderBy(contract => contract.RenewsOn)
+            .ThenBy(contract => contract.Id.Value)
+            .Skip(page.Skip(pageSize))
+            .Take(pageSize.Value)
+            .Select(ContractMappings.ToContractSummaryDtoExpression());
+        return Task.FromResult(new PagedResult<ContractSummaryDto>([.. items], upForRenewal.Count(), page.Value, pageSize.Value));
     }
 }

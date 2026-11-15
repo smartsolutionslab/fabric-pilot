@@ -16,7 +16,9 @@ public sealed class KnowledgePolicies : IModulePolicies
         Ensure.That(policies).IsNotNull();
 
         policies.AddPolicy(KnowledgePolicyNames.Manage, policy => policy.RequireRole("manager").RequireClaim("department", "finance"));
+        policies.AddPolicy(KnowledgePolicyNames.SuggestAnswers, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(KnowledgePolicyNames.ReadAllTenants, policy => policy.RequireRole(CrossTenantRole.Name));
         policies.AddPolicy(KnowledgePolicyNames.WriteSharedRecords, policy => policy.RequireRole(CrossTenantRole.Name));
+        policies.AddPolicy(KnowledgePolicyNames.WriteForTenants, policy => policy.RequireRole(CrossTenantRole.Name));
     }
 }

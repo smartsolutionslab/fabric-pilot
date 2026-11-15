@@ -1,4 +1,4 @@
 import type { ModuleRoute } from '@/modules';
-import { KnowledgePage } from './KnowledgePage';
+import { KnowledgeRoutes } from './KnowledgeRoutes';
 
-export const route: ModuleRoute = { path: 'knowledge', title: 'Knowledge', element: <KnowledgePage /> };
+export const route: ModuleRoute = { path: 'knowledge', title: 'Knowledge', element: <KnowledgeRoutes /> };

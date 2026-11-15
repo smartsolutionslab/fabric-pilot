@@ -1,0 +1,112 @@
+using System.Reflection;
+using System.Security.Claims;
+using FabricPilot.BuildingBlocks.Agents;
+using FabricPilot.BuildingBlocks.Modules;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FabricPilot.Tests.Fakes;
+
+/// <summary>
+/// The HTTP request an agent's tools run in, in a test: who calls, and the endpoints that send the tools' requests with
+/// what each requires, as the host would map them. Every tool call the test makes until it is disposed sees it; a tool
+/// called without one runs as an agent does in a consumer or a background job.
+/// The policies are the host's: every module whose Api project the test project references registers its own, so an
+/// endpoint here names <c>BillingPolicyNames.Manage</c> as the module's does.
+/// </summary>
+public sealed class AgentCaller : IDisposable
+{
+    /// <summary>A policy for the tests alone: only the user named <c>manager</c> meets it.</summary>
+    public const string ManagePolicy = "samples.manage";
+
+    private const string ModuleApis = "FabricPilot.Modules.*.Api.dll";
+
+    private readonly ServiceProvider services;
+
+    private AgentCaller(ClaimsPrincipal user, IReadOnlyList<Endpoint> endpoints)
+    {
+        var collection = new ServiceCollection()
+            .AddLogging()
+            .AddAuthorizationCore(options => options.AddPolicy(ManagePolicy, policy => policy.RequireUserName("manager")))
+            .AddSingleton<EndpointDataSource>(new DefaultEndpointDataSource(endpoints));
+        AddModulePolicies(collection);
+        services = collection.BuildServiceProvider();
+        new HttpContextAccessor().HttpContext = new DefaultHttpContext { User = user, RequestServices = services };
+    }
+
+    /// <summary>A request of the signed-in user <paramref name="name"/> to a host with these endpoints.</summary>
+    public static AgentCaller SignedIn(string name, params Endpoint[] endpoints) =>
+        new(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, name)], "Test")), endpoints);
+
+    /// <summary>A request of no one signed in to a host with these endpoints.</summary>
+    public static AgentCaller Anonymous(params Endpoint[] endpoints) => new(new ClaimsPrincipal(new ClaimsIdentity()), endpoints);
+
+    /// <summary>
+    /// An endpoint that sends <typeparamref name="TRequest"/>, as <c>.Sends&lt;TRequest&gt;()</c> marks it: it requires
+    /// the named policies, or a signed-in user alone when none is named.
+    /// </summary>
+    public static Endpoint Sending<TRequest>(params string[] policies)
+        where TRequest : class
+    {
+        var endpoint = Endpoint<TRequest>();
+        if (policies.Length == 0)
+        {
+            endpoint.Metadata.Add(new AuthorizeAttribute());
+        }
+
+        foreach (var policy in policies)
+        {
+            endpoint.Metadata.Add(new AuthorizeAttribute(policy));
+        }
+
+        return endpoint.Build();
+    }
+
+    /// <summary>An endpoint that sends <typeparamref name="TRequest"/> to anyone, signed in or not.</summary>
+    public static Endpoint SendingToAnyone<TRequest>()
+        where TRequest : class
+    {
+        var endpoint = Endpoint<TRequest>();
+        endpoint.Metadata.Add(new AllowAnonymousAttribute());
+        return endpoint.Build();
+    }
+
+    public void Dispose()
+    {
+        new HttpContextAccessor().HttpContext = null;
+        services.Dispose();
+    }
+
+    /// <summary>
+    /// Registers the policies of every module Api assembly beside the tests, through the host's own
+    /// <see cref="ModulePolicyOwners"/>, and refuses a name two modules register as the host does.
+    /// </summary>
+    private static void AddModulePolicies(IServiceCollection collection)
+    {
+        var owners = new ModulePolicyOwners();
+        List<string> conflicts = [];
+        foreach (var file in Directory.EnumerateFiles(AppContext.BaseDirectory, ModuleApis).Order(StringComparer.Ordinal))
+        {
+            var api = Assembly.Load(new AssemblyName(Path.GetFileNameWithoutExtension(file)));
+            conflicts.AddRange(owners.Register(api, collection));
+        }
+
+        if (conflicts.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, conflicts));
+        }
+    }
+
+    private static RouteEndpointBuilder Endpoint<TRequest>()
+    {
+        var endpoint = new RouteEndpointBuilder(_ => Task.CompletedTask, RoutePatternFactory.Parse("/" + typeof(TRequest).Name), 0)
+        {
+            DisplayName = typeof(TRequest).Name,
+        };
+        endpoint.Metadata.Add(new SendsRequest(typeof(TRequest)));
+        return endpoint;
+    }
+}

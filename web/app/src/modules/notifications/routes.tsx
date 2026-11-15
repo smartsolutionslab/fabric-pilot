@@ -1,4 +1,4 @@
 import type { ModuleRoute } from '@/modules';
-import { NotificationsPage } from './NotificationsPage';
+import { NotificationsRoutes } from './NotificationsRoutes';
 
-export const route: ModuleRoute = { path: 'notifications', title: 'Notifications', element: <NotificationsPage /> };
+export const route: ModuleRoute = { path: 'notifications', title: 'Notifications', element: <NotificationsRoutes /> };

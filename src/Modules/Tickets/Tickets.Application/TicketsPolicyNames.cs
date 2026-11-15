@@ -8,9 +8,15 @@ public static class TicketsPolicyNames
 {
     public const string Manage = "tickets.manage";
 
+    /// <summary>A customer raises their own tenant's tickets and reads them, with their files.</summary>
+    public const string RaiseAndRead = "tickets.raise-and-read";
+
     /// <summary>Staff read every tenant's rows: name it on an endpoint mapped with <c>AcrossTenants()</c>.</summary>
     public const string ReadAllTenants = "tickets.read-all-tenants";
 
     /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
     public const string WriteSharedRecords = "tickets.write-shared-records";
+
+    /// <summary>Staff write into the tenant the route names: name it on an endpoint mapped with <c>ForTenant()</c>.</summary>
+    public const string WriteForTenants = "tickets.write-for-tenants";
 }

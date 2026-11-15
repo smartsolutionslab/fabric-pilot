@@ -9,7 +9,7 @@ namespace FabricPilot.Modules.Notifications.Api;
 public sealed class NotificationsModule : IModule
 {
     public void AddServices(IServiceCollection services, IConfiguration configuration) =>
-        services.AddModuleInfrastructure<NotificationsModule>(configuration);
+        services.AddModuleInfrastructure<NotificationsModule>(configuration).AddNotificationsServices(configuration);
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup("/notifications").MapModuleEndpoints<NotificationsModule>();

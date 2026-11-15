@@ -1,0 +1,16 @@
+import { useGetDocumentsPermissionsManageQuery } from '@/api/generated';
+
+/** What the module's permission probe answered: 200 grants Manage, 403 refuses it, and anything else is a failure to show. */
+export type ManagePermission = 'checking' | 'granted' | 'refused' | 'failed';
+
+/** Whether the caller may manage documents: the module's permission probe answers 200 only to a holder of documents.manage. */
+export function useCanManage(): ManagePermission {
+  const { isSuccess, error } = useGetDocumentsPermissionsManageQuery();
+  if (isSuccess) {
+    return 'granted';
+  }
+  if (error === undefined) {
+    return 'checking';
+  }
+  return 'status' in error && error.status === 403 ? 'refused' : 'failed';
+}
