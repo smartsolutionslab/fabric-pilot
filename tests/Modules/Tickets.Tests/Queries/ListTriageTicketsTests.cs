@@ -1,12 +1,12 @@
 using FabricPilot.Modules.Tickets.Application.DTOs;
-using FabricPilot.Modules.Tickets.Application.Queries.ListTicketQueue;
+using FabricPilot.Modules.Tickets.Application.Queries.ListTriageTickets;
 using FabricPilot.Modules.Tickets.Application.Queries.ListTickets;
 using FabricPilot.Modules.Tickets.Domain.Tickets;
 using SortDirection = FabricPilot.Kernel.SortDirection;
 
 namespace FabricPilot.Modules.Tickets.Tests.Queries;
 
-public class ListTicketQueueTests
+public class ListTriageTicketsTests
 {
     private static readonly DateTimeOffset Monday = new(2026, 11, 9, 8, 0, 0, TimeSpan.Zero);
 
@@ -123,5 +123,5 @@ public class ListTicketQueueTests
     }
 
     private Task<Result<PagedResult<QueuedTicketDto>, ApiError>> Handle(TicketQueueFilter filter, Sorting<TicketSortField> sorting) =>
-        new ListTicketQueueHandler(store).HandleAsync(new ListTicketQueue(Page.First, PageSize.Default, sorting, filter), TestContext.Current.CancellationToken);
+        new ListTriageTicketsHandler(store).HandleAsync(new ListTriageTickets(Page.First, PageSize.Default, sorting, filter), TestContext.Current.CancellationToken);
 }

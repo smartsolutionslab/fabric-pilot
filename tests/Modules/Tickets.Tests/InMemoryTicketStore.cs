@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using FabricPilot.Modules.Tickets.Application;
 using FabricPilot.Modules.Tickets.Application.DTOs;
-using FabricPilot.Modules.Tickets.Application.Queries.ListTicketQueue;
+using FabricPilot.Modules.Tickets.Application.Queries.ListTriageTickets;
 using FabricPilot.Modules.Tickets.Application.Queries.ListTickets;
 using FabricPilot.Modules.Tickets.Domain.Tickets;
 
