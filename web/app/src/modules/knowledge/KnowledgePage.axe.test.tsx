@@ -64,6 +64,13 @@ vi.mock('@/api/generated', async (importOriginal) => {
   );
 });
 
+// The page offers staff "Manage articles" through RequirePermission, which reads the signed-in user from
+// react-oidc-context: a provider besides the API client, given here by hand (docs/adr/0050). The user is staff, so the
+// check sees that link too.
+vi.mock('react-oidc-context', () => ({
+  useAuth: () => ({ user: { profile: { preferred_username: 'staff', realm_access: { roles: ['staff'] } } } }),
+}));
+
 // Whatever else asks the host waits for an answer that never comes.
 vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
 

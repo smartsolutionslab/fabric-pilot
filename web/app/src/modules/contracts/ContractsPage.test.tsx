@@ -6,7 +6,11 @@ import { axe } from 'vitest-axe';
 import { useGetContractsContractsQuery } from '@/api/generated';
 import { ContractsPage } from './ContractsPage';
 
-vi.mock('@/api/generated', () => ({ useGetContractsContractsQuery: vi.fn() }));
+vi.mock('@/api/generated', () => ({
+  useGetContractsContractsQuery: vi.fn(),
+  // The module's permission probe refuses, as it does every caller without its permission.
+  useGetContractsPermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
+}));
 
 const page = {
   items: [

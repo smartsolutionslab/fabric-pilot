@@ -8,6 +8,8 @@ import { ContractsScreens } from './ContractsScreens';
 vi.mock('@/api/generated', () => ({
   useGetContractsContractsQuery: vi.fn(),
   useGetContractsContractsUpForRenewalQuery: vi.fn(),
+  // The module's permission probe refuses, as it does every caller without its permission.
+  useGetContractsPermissionsManageQuery: () => ({ isSuccess: false, error: { status: 403 } }),
 }));
 vi.mock('react-oidc-context', () => ({ useAuth: vi.fn() }));
 
