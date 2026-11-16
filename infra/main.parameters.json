@@ -9,6 +9,8 @@
     "tenants": { "value": "${TENANTS}" },
     "smtpConnection": { "value": "${SMTP_CONNECTION}" },
     "senderAddress": { "value": "${NOTIFICATIONS_SENDER_ADDRESS}" },
+    "smtpUserName": { "value": "${SMTP_USER_NAME}" },
+    "smtpPassword": { "value": "${SMTP_PASSWORD}" },
     "hostImageName": { "value": "${SERVICE_HOST_IMAGE_NAME}" },
     "migrationsImageName": { "value": "${SERVICE_MIGRATIONS_IMAGE_NAME}" },
     "webImageName": { "value": "${SERVICE_WEB_IMAGE_NAME}" }

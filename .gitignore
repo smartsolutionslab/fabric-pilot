@@ -6,3 +6,5 @@ dist/
 *.user
 .vs/
 .idea/
+# azd environments (infra/README.md): their .env holds values such as SMTP_PASSWORD.
+.azure/

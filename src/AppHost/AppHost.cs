@@ -102,6 +102,16 @@ if (mailpit is not null)
         .WithEnvironment("Notifications__AllowUnencryptedSmtp", "true")
         .WaitFor(mailpit);
 }
+else
+{
+    // Mailpit takes mail without signing in, and so does a relay. A deployed SMTP server that requires authentication (Azure
+    // Communication Services and most providers) gets the user name smtp-user-name and the secret smtp-password, both
+    // given together or not at all (infra/README.md).
+    var smtpUserName = builder.AddParameter("smtp-user-name");
+    var smtpPassword = builder.AddParameter("smtp-password", secret: true);
+    host.WithEnvironment("Notifications__SmtpUserName", smtpUserName)
+        .WithEnvironment("Notifications__SmtpPassword", smtpPassword);
+}
 
 builder.AddViteApp("web", "../../web/app")
     .WithPnpm()

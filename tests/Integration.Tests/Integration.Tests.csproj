@@ -24,6 +24,8 @@
     <ProjectReference Include="../../src/Modules/Billing/Billing.Infrastructure/Billing.Infrastructure.csproj" />
     <!-- The knowledge tests search the shared index as a tenant's use case would, with the fake embeddings the host is given. -->
     <ProjectReference Include="../../src/Modules/Knowledge/Knowledge.Infrastructure/Knowledge.Infrastructure.csproj" />
+    <!-- The SMTP authentication tests send through the module's sender, configured as the host configures it. -->
+    <ProjectReference Include="../../src/Modules/Notifications/Notifications.Infrastructure/Notifications.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Contracts/Contracts.csproj" />
     <!-- The chat model shares the embeddings' endpoint: the fake server answers chat with the FakeChatClient a test gives it. -->
     <Compile Include="../Fakes/FakeChatClient.cs" Link="Fakes/FakeChatClient.cs" />
