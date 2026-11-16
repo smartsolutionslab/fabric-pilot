@@ -14,7 +14,7 @@ ARG VITE_OIDC_AUTHORITY
 RUN test -n "$VITE_OIDC_AUTHORITY" || { echo "VITE_OIDC_AUTHORITY is required: the deployed realm's URL." >&2; exit 1; }
 RUN VITE_OIDC_AUTHORITY="$VITE_OIDC_AUTHORITY" pnpm --dir app build
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 # On start the image fills the template's ${HOST_URL} from the container's environment (the host's internal address,
 # set by infra/resources.bicep); nginx's own $variables are not in the environment and stay as they are.
 COPY --from=build /web/app/dist /usr/share/nginx/html
