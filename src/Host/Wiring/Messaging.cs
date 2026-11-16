@@ -28,6 +28,9 @@ public static class Messaging
             options.UseEntityFrameworkCoreTransactions();
             options.Policies.UseDurableOutboxOnAllSendingEndpoints();
             options.Policies.UseDurableInboxOnAllListeners();
+            // An event a module of this host consumes goes to a local queue, not the broker (see docs/adr); durable, it is
+            // stored with the publishing module's changes and its retries are scheduled in the inbox, so a restart keeps it.
+            options.Policies.UseDurableLocalQueues();
             // A consumer that throws is tried again, the wait doubling from 1 second, before its message is dead-lettered
             // (seven attempts, about a minute; see docs/adr). The retry is scheduled in the durable inbox, so the
             // listener delivers other messages meanwhile.
@@ -38,7 +41,9 @@ public static class Messaging
                 TimeSpan.FromSeconds(8),
                 TimeSpan.FromSeconds(16),
                 TimeSpan.FromSeconds(32));
-            options.UseRabbitMq(new Uri(broker)).AutoProvision().UseConventionalRouting();
+            // A message given up on is dead-lettered in the wolverine_dead_letters table, where it is replayed from,
+            // and not in a dead-letter queue of the broker's (see docs/adr).
+            options.UseRabbitMq(new Uri(broker)).AutoProvision().DisableDeadLetterQueueing().UseConventionalRouting();
 
             options.Discovery.DisableConventionalDiscovery();
             options.Discovery.CustomizeHandlerDiscovery(query => query.Includes.WithNameSuffix("Consumer"));
