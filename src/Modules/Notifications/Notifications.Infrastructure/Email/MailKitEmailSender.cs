@@ -1,4 +1,5 @@
 using FabricPilot.Modules.Notifications.Application;
+using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
