@@ -2,6 +2,8 @@
 
   <!-- RetryEveryMethod(): the admin token's mint opts back into retrying its POST. -->
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" VersionOverride="11.0.0" />
+    <PackageReference Include="WolverineFx" />
     <ProjectReference Include="../../../ServiceDefaults/ServiceDefaults.csproj" />
   </ItemGroup>
 
