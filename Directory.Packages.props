@@ -25,7 +25,7 @@
     <PackageVersion Include="WolverineFx.Postgresql" Version="6.64.0" />
     <PackageVersion Include="WolverineFx.RabbitMQ" Version="6.64.0" />
 
-    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="17.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="11.0.0-rc.3.26522.148" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.3.26522.148" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0-rc.3.26522.148" />
