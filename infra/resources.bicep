@@ -3,7 +3,7 @@
 param location string
 param openAiLocation string
 param tags object
-param principalId string
+param keycloakAdminAddresses string
 param tenants string
 param smtpConnection string
 param senderAddress string
@@ -45,6 +45,73 @@ var roles = {
   acrPull: '7f951dda-4ed3-4680-a7ca-43fe172d538d'
   keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
   storageBlobDataContributor: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+}
+
+// The virtual network (docs/adr/0055): the Container Apps environment in one subnet, the private endpoints of PostgreSQL,
+// Key Vault and Storage in the other. None of the three answers from the internet; inside the network their usual names
+// resolve to the endpoints, so connection strings and Key Vault references stay as they are.
+resource network 'Microsoft.Network/virtualNetworks@2024-05-01' = {
+  name: 'vnet-${token}'
+  location: location
+  tags: tags
+  properties: {
+    addressSpace: { addressPrefixes: ['10.40.0.0/16'] }
+    subnets: [
+      {
+        name: 'apps'
+        properties: {
+          addressPrefix: '10.40.0.0/23'
+          delegations: [{ name: 'container-apps', properties: { serviceName: 'Microsoft.App/environments' } }]
+        }
+      }
+      {
+        name: 'endpoints'
+        properties: { addressPrefix: '10.40.2.0/24' }
+      }
+    ]
+  }
+}
+
+var appsSubnetId = network.properties.subnets[0].id
+var endpointsSubnetId = network.properties.subnets[1].id
+
+module postgresEndpoint 'private-endpoint.bicep' = {
+  name: 'postgres-endpoint'
+  params: {
+    location: location
+    tags: tags
+    resourceId: postgres.id
+    groupId: 'postgresqlServer'
+    zoneName: 'privatelink.postgres.database.azure.com'
+    networkId: network.id
+    subnetId: endpointsSubnetId
+  }
+}
+
+module vaultEndpoint 'private-endpoint.bicep' = {
+  name: 'vault-endpoint'
+  params: {
+    location: location
+    tags: tags
+    resourceId: vault.id
+    groupId: 'vault'
+    zoneName: 'privatelink.vaultcore.azure.net'
+    networkId: network.id
+    subnetId: endpointsSubnetId
+  }
+}
+
+module blobEndpoint 'private-endpoint.bicep' = {
+  name: 'blob-endpoint'
+  params: {
+    location: location
+    tags: tags
+    resourceId: storage.id
+    groupId: 'blob'
+    zoneName: 'privatelink.blob.${az.environment().suffixes.storage}'
+    networkId: network.id
+    subnetId: endpointsSubnetId
+  }
 }
 
 // One identity for every app: it pulls images, reads the Key Vault secrets and reaches the blobs without a key.
@@ -95,6 +162,10 @@ resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     sku: { family: 'A', name: 'standard' }
     enableRbacAuthorization: true
     softDeleteRetentionInDays: 7
+    // Only through its private endpoint. The deployment writes the secrets through Azure Resource Manager, which the
+    // network rules do not apply to; nobody reads them from outside (create-realm.sh reads azd's own copies).
+    publicNetworkAccess: 'Disabled'
+    networkAcls: { defaultAction: 'Deny', bypass: 'None' }
   }
 }
 
@@ -104,17 +175,6 @@ resource vaultRead 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     principalId: identity.properties.principalId
     principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.keyVaultSecretsUser)
-  }
-}
-
-// The person running azd reads the Keycloak secrets once, to create the realm (infra/keycloak/create-realm.sh).
-resource vaultReadForDeployer 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
-  name: guid(vault.id, principalId, roles.keyVaultSecretsUser)
-  scope: vault
-  properties: {
-    principalId: principalId
-    principalType: 'User'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.keyVaultSecretsUser)
   }
 }
@@ -193,7 +253,8 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
     storage: { storageSizeGB: 32, autoGrow: 'Enabled' }
     backup: { backupRetentionDays: 7, geoRedundantBackup: 'Disabled' }
     highAvailability: { mode: 'Disabled' }
-    network: { publicNetworkAccess: 'Enabled' }
+    // Only through its private endpoint (postgresEndpoint); the server keeps its name, which resolves to it in the network.
+    network: { publicNetworkAccess: 'Disabled' }
   }
 }
 
@@ -203,20 +264,11 @@ resource postgresExtensions 'Microsoft.DBforPostgreSQL/flexibleServers/configura
   properties: { value: 'VECTOR', source: 'user-override' }
 }
 
-// Container Apps on the consumption plan have no fixed outbound address, so the server admits Azure's own addresses;
-// the password and TLS protect it.
-resource postgresFromAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
-  parent: postgres
-  name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
-  properties: { startIpAddress: '0.0.0.0', endIpAddress: '0.0.0.0' }
-  dependsOn: [postgresExtensions]
-}
-
 resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
   parent: postgres
   name: 'database'
   properties: { charset: 'UTF8', collation: 'en_US.utf8' }
-  dependsOn: [postgresFromAzure]
+  dependsOn: [postgresExtensions]
 }
 
 resource keycloakDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
@@ -240,6 +292,9 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     allowSharedKeyAccess: false
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
+    // Only through its private endpoint (blobEndpoint); the host keeps the blob endpoint's name.
+    publicNetworkAccess: 'Disabled'
+    networkAcls: { defaultAction: 'Deny', bypass: 'None' }
   }
 }
 
@@ -293,6 +348,9 @@ resource environment 'Microsoft.App/managedEnvironments@2025-01-01' = {
   location: location
   tags: tags
   properties: {
+    // In the network's apps subnet, with a public ingress for the web app and Keycloak; everything else is internal.
+    vnetConfiguration: { infrastructureSubnetId: appsSubnetId, internal: false }
+    workloadProfiles: [{ name: 'Consumption', workloadProfileType: 'Consumption' }]
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
@@ -317,6 +375,7 @@ resource rabbitMq 'Microsoft.App/containerApps@2025-01-01' = {
   identity: identities
   properties: {
     environmentId: environment.id
+    workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: { external: false, targetPort: 5672, exposedPort: 5672, transport: 'tcp' }
@@ -337,11 +396,15 @@ resource rabbitMq 'Microsoft.App/containerApps@2025-01-01' = {
       scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }
-  dependsOn: [vaultRead]
+  dependsOn: [vaultRead, vaultEndpoint]
 }
 
 // Keycloak in production mode, on its own database, behind the environment's TLS. Its realm is created once by hand
-// (infra/README.md); nothing is imported on start (docs/adr/0052).
+// (infra/README.md); nothing is imported on start (docs/adr/0052). The ingress reaches an nginx beside it
+// (keycloak/proxy.conf), which keeps the admin console to the environment and the listed addresses (docs/adr/0055).
+var keycloakAdminAllowed = join(map(filter(split(keycloakAdminAddresses, ','), address => !empty(trim(address))), address => 'allow ${trim(address)};'), '\n        ')
+var keycloakProxyConfiguration = replace(loadTextContent('keycloak/proxy.conf'), '# KEYCLOAK_ADMIN_ADDRESSES', keycloakAdminAllowed)
+
 resource keycloak 'Microsoft.App/containerApps@2025-01-01' = {
   name: 'keycloak'
   location: location
@@ -349,9 +412,10 @@ resource keycloak 'Microsoft.App/containerApps@2025-01-01' = {
   identity: identities
   properties: {
     environmentId: environment.id
+    workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
-      ingress: { external: true, targetPort: 8080, transport: 'auto', allowInsecure: false }
+      ingress: { external: true, targetPort: 8000, transport: 'auto', allowInsecure: false }
       secrets: [
         { name: 'keycloak-password', keyVaultUrl: keycloakPasswordSecret.properties.secretUri, identity: identity.id }
         { name: 'postgres-password', keyVaultUrl: postgresPasswordSecret.properties.secretUri, identity: identity.id }
@@ -399,11 +463,20 @@ resource keycloak 'Microsoft.App/containerApps@2025-01-01' = {
             }
           ]
         }
+        {
+          name: 'proxy'
+          image: 'docker.io/nginxinc/nginx-unprivileged:1.31-alpine'
+          resources: { cpu: json('0.25'), memory: '0.5Gi' }
+          // The configuration replaces the image's default server (port 8080, Keycloak's) before nginx starts.
+          command: ['/bin/sh', '-c']
+          args: ['printf \'%s\\n\' "$PROXY_CONFIGURATION" > /etc/nginx/conf.d/default.conf && exec nginx -g \'daemon off;\'']
+          env: [{ name: 'PROXY_CONFIGURATION', value: keycloakProxyConfiguration }]
+        }
       ]
       scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }
-  dependsOn: [vaultRead]
+  dependsOn: [vaultRead, postgresEndpoint, vaultEndpoint]
 }
 
 var hostSecrets = concat([
@@ -447,6 +520,7 @@ resource host 'Microsoft.App/containerApps@2025-01-01' = {
   identity: identities
   properties: {
     environmentId: environment.id
+    workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: { external: false, targetPort: 8080, transport: 'auto', allowInsecure: false }
@@ -469,7 +543,7 @@ resource host 'Microsoft.App/containerApps@2025-01-01' = {
       scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }
-  dependsOn: [registryPull, vaultRead, blobsForHost, rabbitMq]
+  dependsOn: [registryPull, vaultRead, blobsForHost, rabbitMq, postgresEndpoint, vaultEndpoint, blobEndpoint]
 }
 
 // The MigrationRunner (the AppHost's "migrations"), a job azd starts after each deploy of it and waits for
@@ -481,6 +555,7 @@ resource migrations 'Microsoft.App/jobs@2025-01-01' = {
   identity: identities
   properties: {
     environmentId: environment.id
+    workloadProfileName: 'Consumption'
     configuration: {
       triggerType: 'Manual'
       replicaTimeout: 1800
@@ -500,7 +575,7 @@ resource migrations 'Microsoft.App/jobs@2025-01-01' = {
       ]
     }
   }
-  dependsOn: [registryPull, vaultRead]
+  dependsOn: [registryPull, vaultRead, postgresEndpoint, vaultEndpoint]
 }
 
 // The web app (the AppHost's "web"): the built SPA behind nginx, which forwards /api to the host as Vite does locally.
@@ -511,6 +586,7 @@ resource web 'Microsoft.App/containerApps@2025-01-01' = {
   identity: identities
   properties: {
     environmentId: environment.id
+    workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: { external: true, targetPort: 8080, transport: 'auto', allowInsecure: false }
