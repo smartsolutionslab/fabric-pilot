@@ -14,7 +14,7 @@ public static class EvalPrompt
     {
         Ensure.That(example).IsNotNull();
 
-        var (input, groundingContext) = example;
+        var (input, groundingContext, _) = example;
         return groundingContext is null
             ? [new ChatMessage(ChatRole.User, input)]
             : [new ChatMessage(ChatRole.System, Instruction), new ChatMessage(ChatRole.User, $"<records>\n{groundingContext}\n</records>\n\n{input}")];

@@ -1,10 +1,13 @@
 namespace FabricPilot.Evals;
 
-/// <summary>Where the evals find <c>fabric.yaml</c> and write their results: from the repository root, found above the build output.</summary>
+/// <summary>Where the evals find <c>fabric.yaml</c> and their dataset, and write their results: from the repository root, found above the build output.</summary>
 public static class EvalPaths
 {
     /// <summary>The repository's <c>fabric.yaml</c>, which holds the threshold.</summary>
     public static string FabricYaml => Path.Combine(RepositoryRoot(), "fabric.yaml");
+
+    /// <summary>The checked-in tickets the suggested answers are evaluated on.</summary>
+    public static string SupportTickets => Path.Combine(RepositoryRoot(), "tests", "Evals", "Datasets", "support-tickets.json");
 
     /// <summary>The results of every run, read by <c>dotnet aieval report</c>; under TestResults/, which git ignores.</summary>
     public static string Results => Path.Combine(RepositoryRoot(), "TestResults", "evals");

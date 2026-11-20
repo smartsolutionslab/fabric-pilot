@@ -7,6 +7,7 @@ namespace FabricPilot.Evals;
 /// <summary>
 /// The evals: the project's own model answers every use case's examples and judges the answers. It calls the real
 /// model, costs money and sends the examples and answers to the provider, so only .github/workflows/evals.yml runs it.
+/// <see cref="EvalVariants.EnvironmentVariable"/> chooses the prompt the use cases answer with; the judge is the model as it is.
 /// </summary>
 public sealed class UseCaseEvals
 {
@@ -16,9 +17,10 @@ public sealed class UseCaseEvals
         var threshold = EvalThreshold.Read();
         await using var services = ProjectModel.Services();
         var model = services.GetRequiredService<IChatClient>();
-        var executionName = TimeProvider.System.GetUtcNow().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+        var variant = EvalVariants.FromEnvironment();
+        var executionName = $"{TimeProvider.System.GetUtcNow().ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture)}-{variant.ToString().ToLowerInvariant()}";
 
-        var scores = await EvalRun.RunAsync(UseCases.All, model, judge: model, EvalPaths.Results, executionName, TestContext.Current.CancellationToken);
+        var scores = await EvalRun.RunAsync(UseCases.All, variant.Answering(model), judge: model, EvalPaths.Results, executionName, TestContext.Current.CancellationToken);
 
         foreach (var line in scores.Report())
         {
@@ -26,7 +28,7 @@ public sealed class UseCaseEvals
         }
 
         var violations = scores.BelowThreshold(threshold);
-        var description = $"The threshold in fabric.yaml is {threshold.ToString(CultureInfo.InvariantCulture)}. Every score: {string.Join("; ", scores.Report())}";
+        var description = $"The {variant} variant. The threshold in fabric.yaml is {threshold.ToString(CultureInfo.InvariantCulture)}. Every score: {string.Join("; ", scores.Report())}";
 
         violations.ShouldBeEmpty(description);
     }

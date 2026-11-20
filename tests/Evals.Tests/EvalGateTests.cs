@@ -44,7 +44,7 @@ public sealed class EvalGateTests : IDisposable
     }
 
     [Fact]
-    public async Task Every_example_is_judged_for_relevance_and_only_those_with_context_for_groundedness()
+    public async Task Every_example_is_judged_for_relevance_only_those_with_context_for_groundedness_and_only_those_with_expected_sources_for_sources()
     {
         var scores = await RunAsync(judgeScore: 5);
 
@@ -55,6 +55,7 @@ public sealed class EvalGateTests : IDisposable
             Count(scores, useCase.Name, RelevanceEvaluator.RelevanceMetricName).ShouldBe(examples, useCase.Name);
             Count(scores, useCase.Name, GroundednessEvaluator.GroundednessMetricName).ShouldBe(grounded, useCase.Name);
             Count(scores, useCase.Name, AnsweredEvaluator.AnsweredMetricName).ShouldBe(examples, useCase.Name);
+            Count(scores, useCase.Name, SourcesEvaluator.SourcesMetricName).ShouldBe(useCase.Examples.Count(example => example.ExpectedSources is not null), useCase.Name);
         }
     }
 
@@ -236,7 +237,10 @@ public sealed class EvalGateTests : IDisposable
 
     private async Task<EvalScores> RunAsync(int judgeScore)
     {
-        using var model = new FakeChatClient(Answer);
+        using var model = new InstructionFollowingModel(UseCases.All
+            .SelectMany(useCase => useCase.Examples)
+            .Where(example => example.ExpectedSources is not null)
+            .ToDictionary(example => example.Input, example => example.ExpectedSources!));
         using var judge = new FakeJudge(judgeScore);
         return await EvalRun.RunAsync(UseCases.All, model, judge, results.FullName, "gate", TestContext.Current.CancellationToken);
     }
