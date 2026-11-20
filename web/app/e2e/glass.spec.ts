@@ -1,0 +1,38 @@
+import AxeBuilder from '@axe-core/playwright';
+import { expect, type Page, test } from '@playwright/test';
+
+// The frosted surfaces (the header, the sidebar, dialogs and the command palette) are translucent, so the contrast of
+// their text depends on the page behind them, which only a browser composes: axe's colour-contrast rule checks each of
+// them over the start page, in both themes. src/theme/contrast.test.ts checks their tokens over any backdrop.
+async function contrastViolations(page: Page, selector: string) {
+  const results = await new AxeBuilder({ page }).include(selector).withRules(['color-contrast']).analyze();
+  return results.violations;
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`in the ${theme} theme the frosted header, sidebar and command palette have AA contrast`, async ({ page }) => {
+    // Without motion the dialog opens at once, so axe never reads it halfway through its animation.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript((choice) => {
+      localStorage.setItem('theme', choice);
+    }, theme);
+    await page.goto('/');
+    await page.getByLabel('Username or email').fill('developer');
+    await page.getByLabel('Password', { exact: true }).fill('developer');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+    await expect(page.getByText('Signed in as developer')).toBeVisible();
+    const html = page.locator('html');
+    if (theme === 'dark') {
+      await expect(html).toHaveClass(/\bdark\b/);
+    } else {
+      await expect(html).not.toHaveClass(/\bdark\b/);
+    }
+
+    expect(await contrastViolations(page, 'header')).toEqual([]);
+    expect(await contrastViolations(page, '[data-slot="sidebar-container"]')).toEqual([]);
+
+    await page.keyboard.press('ControlOrMeta+K');
+    await expect(page.getByRole('dialog')).toBeVisible();
+    expect(await contrastViolations(page, '[role="dialog"]')).toEqual([]);
+  });
+}

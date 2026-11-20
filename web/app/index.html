@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>fabric-pilot</title>
+    <script>
+      // The theme before the first paint, so a dark page never flashes light; src/theme/theme.ts keeps it afterwards.
+      (() => {
+        let theme = null;
+        try {
+          theme = localStorage.getItem('theme');
+        } catch {
+          // Storage is blocked: the page follows the system.
+        }
+        const system = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', theme === 'dark' || (theme !== 'light' && system));
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

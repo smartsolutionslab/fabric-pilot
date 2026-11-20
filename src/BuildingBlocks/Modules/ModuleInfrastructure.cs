@@ -15,6 +15,7 @@ public static class ModuleInfrastructure
         services.AddModuleHandlers<TModule>();
         services.AddModuleUnitOfWork<TModule>();
         services.AddModuleDomainEventReactions<TModule>();
+        services.AddModuleAdapters<TModule>();
         services.AddModulePolicies<TModule>();
         return services;
     }

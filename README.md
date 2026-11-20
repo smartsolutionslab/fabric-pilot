@@ -93,6 +93,14 @@ dotnet build build.proj
 dotnet run --project src/AppHost
 ```
 
+## Test
+
+```bash
+dotnet test --project tests/Architecture.Tests/Architecture.Tests.csproj
+```
+
+`dotnet test --project` exists only on Microsoft.Testing.Platform, which `global.json`'s `"test": { "runner": "Microsoft.Testing.Platform" }` selects. Keep that section when a tool rewrites `global.json`: without it `dotnet test --project` fails with `MSB1001: Unknown switch`. `bash .github/scripts/check-test-runner.sh` names the file instead, and `.github/scripts/test.sh` runs it before the tests; the architecture rule `GlobalJsonSelectsTheTestingPlatform` does the same where the tests run without `dotnet test` (an IDE, or `dotnet run --project <test project>`).
+
 ## Agents
 
 An agent lives in a module's Application project and a command or query runs it; its tools are the module's own commands and queries, sent through `IDispatcher`:

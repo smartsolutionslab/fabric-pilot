@@ -80,4 +80,37 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Every animation runs only without prefers-reduced-motion: reduce (docs/adr). An animate-* or transition* class
+    // carries motion-safe: (or motion-reduce:), whether it is in a script's string.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*'],
+    plugins: {
+      motion: {
+        rules: {
+          'respect-reduced-motion': {
+            meta: { type: 'problem' },
+            create(context) {
+              const unguarded =
+                /(?<=^|\s)((?!\S*motion-(?:safe|reduce):)(?:\S*:)?(?:animate-(?!none(?:\s|$))\S+|transition(?:-(?!none(?:\s|$))\S+)?))(?=\s|$)/g;
+              const check = (node, text) => {
+                for (const [, name] of text.matchAll(unguarded)) {
+                  context.report({
+                    node,
+                    message: `'${name}' animates whatever the reader's motion settings: write motion-safe:${name}.`,
+                  });
+                }
+              };
+              const script = {
+                Literal: (node) => typeof node.value === 'string' && check(node, node.value),
+                TemplateElement: (node) => check(node, node.value.raw),
+              };
+              return script;
+            },
+          },
+        },
+      },
+    },
+    rules: { 'motion/respect-reduced-motion': 'error' },
+  },
 );

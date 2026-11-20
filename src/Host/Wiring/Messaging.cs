@@ -51,6 +51,8 @@ public static class Messaging
             {
                 options.Discovery.IncludeAssembly(ModuleAssemblies.Of(module, "Application"));
             }
+            options.ResolveDispatcherFromScope()
+                .ResolveModuleServicesFromScope(modules);
         });
 
         return services;

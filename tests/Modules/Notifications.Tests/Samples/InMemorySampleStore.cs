@@ -1,0 +1,37 @@
+using FabricPilot.Contracts;
+using FabricPilot.Modules.Notifications.Application;
+using FabricPilot.Modules.Notifications.Domain.Samples;
+
+namespace FabricPilot.Modules.Notifications.Tests.Samples;
+
+/// <summary>The samples table in memory, and the module's unit of work over it: what is added is stored once committed.</summary>
+internal sealed class InMemorySampleStore : ISampleStore, INotificationsUnitOfWork
+{
+    private readonly List<Sample> added = [];
+
+    public List<Sample> Stored { get; } = [];
+
+    public void Add(Sample sample) => added.Add(sample);
+
+    public Task<Option<Sample>> FindAsync(SampleId id, CancellationToken cancellationToken) =>
+        Task.FromResult(Stored.SingleOrDefault(sample => sample.Id == id) is { } sample ? Option<Sample>.Some(sample) : Option<Sample>.None);
+
+    public Task<PagedResult<Sample>> ListAsync(Page page, PageSize pageSize, CancellationToken cancellationToken)
+    {
+        List<Sample> items = [.. Stored
+            .OrderBy(sample => sample.Name.Value, StringComparer.Ordinal)
+            .ThenBy(sample => sample.Id.Value)
+            .Skip(page.Skip(pageSize))
+            .Take(pageSize.Value)];
+        return Task.FromResult(new PagedResult<Sample>(items, Stored.Count, page.Value, pageSize.Value));
+    }
+
+    public Task PublishAsync(IntegrationEvent integrationEvent) => Task.CompletedTask;
+
+    public Task CommitAsync(CancellationToken cancellationToken)
+    {
+        Stored.AddRange(added);
+        added.Clear();
+        return Task.CompletedTask;
+    }
+}

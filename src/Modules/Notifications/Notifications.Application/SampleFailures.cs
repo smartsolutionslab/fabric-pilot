@@ -1,0 +1,9 @@
+namespace FabricPilot.Modules.Notifications.Application;
+
+/// <summary>Everything the sample's use cases refuse, each with its own code.</summary>
+public static class SampleFailures
+{
+    public static ApiError InvalidName() => new InvalidSampleName();
+
+    public static ApiError NotFound(Guid id) => new SampleNotFound(id);
+}

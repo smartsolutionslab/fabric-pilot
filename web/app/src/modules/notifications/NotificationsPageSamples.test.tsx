@@ -1,0 +1,109 @@
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { NotificationsPage } from './NotificationsPage';
+
+// The page's data comes through useNotificationsSamples, whose own test reads the host and the optimistic update; here the
+// samples, and what creating one answers, are the test's.
+const samples = vi.hoisted(() => ({
+  list: {
+    samples: undefined as { id: string; name: string }[] | undefined,
+    page: undefined as { totalCount: number; page: number; pageSize: number } | undefined,
+    isLoading: false,
+    isError: false,
+  },
+  create: vi.fn<(name: string) => Promise<boolean>>(),
+}));
+vi.mock('./useNotificationsSamples', () => ({
+  useNotificationsSamples: () => samples.list,
+  useCreateNotificationsSample: () => ({ create: samples.create, isSaving: false }),
+}));
+vi.mock('./useCanManage', () => ({ useCanManage: () => 'refused' }));
+const notify = vi.hoisted(() => ({ success: vi.fn(), failure: vi.fn() }));
+vi.mock('@/lib/notify', () => ({ notify }));
+
+const ada = { id: '0198c1a0-0000-7000-8000-000000000001', name: 'Ada' };
+const bea = { id: '0198c1a0-0000-7000-8000-000000000002', name: 'Bea' };
+
+beforeEach(() => {
+  samples.list = { samples: [ada, bea], page: undefined, isLoading: false, isError: false };
+  samples.create.mockReset();
+  notify.success.mockReset();
+  notify.failure.mockReset();
+});
+// Without Vitest's globals, Testing Library does not unmount between tests by itself.
+afterEach(cleanup);
+
+test('the page lists the samples by name', async () => {
+  render(<NotificationsPage />);
+
+  expect(await screen.findByText('Ada')).toBeInTheDocument();
+  expect(await screen.findByText('Bea')).toBeInTheDocument();
+  expect(screen.queryByText('No samples yet.')).not.toBeInTheDocument();
+});
+
+test('below the samples the page says which of how many it shows, from the page the host answered', () => {
+  samples.list = {
+    samples: [ada, bea],
+    page: { totalCount: 42, page: 1, pageSize: 20 },
+    isLoading: false,
+    isError: false,
+  };
+  render(<NotificationsPage />);
+
+  expect(screen.getByRole('table')).toHaveAccessibleDescription('Showing 1–2 of 42');
+});
+
+test('while the samples load the page shows skeleton rows', () => {
+  samples.list = { samples: undefined, page: undefined, isLoading: true, isError: false };
+
+  const { container } = render(<NotificationsPage />);
+
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+  expect(screen.getByText('Loading…')).toBeInTheDocument();
+  expect(screen.queryByText('No samples yet.')).not.toBeInTheDocument();
+});
+
+test('without samples the page says so and its action leads to the form', async () => {
+  samples.list = { samples: [], page: undefined, isLoading: false, isError: false };
+  render(<NotificationsPage />);
+
+  expect(screen.getByText('No samples yet.')).toBeVisible();
+  await userEvent.click(screen.getByRole('button', { name: 'Create a sample' }));
+
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
+});
+
+test('a created sample is reported', async () => {
+  samples.create.mockResolvedValue(true);
+  render(<NotificationsPage />);
+
+  await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Cleo');
+  await userEvent.click(screen.getByRole('button', { name: 'Create sample' }));
+
+  expect(samples.create).toHaveBeenCalledWith('Cleo');
+  expect(notify.success).toHaveBeenCalledWith('The sample Cleo was created.');
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('');
+});
+
+test('a sample the server refuses is reported as a failure', async () => {
+  samples.create.mockResolvedValue(false);
+  render(<NotificationsPage />);
+
+  await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Cleo');
+  await userEvent.click(screen.getByRole('button', { name: 'Create sample' }));
+
+  expect(notify.failure).toHaveBeenCalledWith('The sample Cleo could not be created.');
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Cleo');
+});
+
+test('a blank name is refused before anything is sent', async () => {
+  render(<NotificationsPage />);
+
+  await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '   ');
+  await userEvent.click(screen.getByRole('button', { name: 'Create sample' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Give the sample a name.');
+  expect(samples.create).not.toHaveBeenCalled();
+});

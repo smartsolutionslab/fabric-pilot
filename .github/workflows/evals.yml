@@ -28,6 +28,8 @@ jobs:
         with:
           global-json-file: global.json
       - run: dotnet build tests/Evals/Evals.csproj -c Release
+      - name: Check global.json's test runner
+        run: bash .github/scripts/check-test-runner.sh
       - name: Evaluate
         run: dotnet test --project tests/Evals/Evals.csproj -c Release --no-build
       # The report shows every score, passing or not.

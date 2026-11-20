@@ -1,7 +1,7 @@
 # Written by fabric. These choices are fixed for this project (ADR-0001 of the generator).
 fabric: 1
-generator: 0.7.0
-catalog: sha256:b2748ab94d729d8ad161b2e8d1d670698c5d16d7957ac8760ac667b75143f6b7
+generator: 0.8.0
+catalog: sha256:c37d58df90531045b421acb80c8fece85292a3046ff37b0c3cd0bdbb836c3c5f
 name: fabric-pilot
 profile: saas-ai-react
 project:
@@ -50,6 +50,8 @@ project:
   frontend.auth-client: oidc-client-ts
   frontend.pwa: "no"
   frontend.test.extras: [accessibility]
+  frontend.color-scheme: blue
+  frontend.font: inter
   backend.data-access.reads: ef-core
 settings:
   backend.llm.extras.evals.threshold: 4
