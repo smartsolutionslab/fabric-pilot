@@ -4,7 +4,7 @@ name: evals
 # run costs money and sends the examples and the answers to the provider. Run them by hand from the Actions tab, or set
 # the repository variable EVALS_SCHEDULED to true for the weekly run. The regular CI never runs them.
 # A run by hand chooses the variant: normal, the use cases' own prompts, or degraded, where the suggested answers get a
-# careless instruction (tests/Evals/EvalVariants.cs) so the run shows the gate failing (docs/adr/0052). A scheduled run
+# careless instruction (tests/Evals/EvalVariants.cs) so the run shows the gate failing (docs/adr/0054). A scheduled run
 # is always normal.
 run-name: evals (${{ inputs.variant || 'normal' }})
 on:
