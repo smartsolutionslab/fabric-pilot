@@ -14,8 +14,8 @@ param location string
 @description('The region of the Azure OpenAI resource: one that offers both model deployments below.')
 param openAiLocation string = location
 
-@description('The signed-in user azd runs as (AZURE_PRINCIPAL_ID): may read Key Vault secrets, for the realm setup.')
-param principalId string = ''
+@description('The addresses besides the environment itself that may reach Keycloak\'s admin console and admin API (/admin), comma-separated CIDR ranges (KEYCLOAK_ADMIN_ADDRESSES), e.g. your office\'s 203.0.113.0/24; empty for none.')
+param keycloakAdminAddresses string = ''
 
 @description('The tenants staff may write for, comma-separated (Tenancy:Tenants); each needs the group /tenants/<tenant>.')
 param tenants string = 'demo'
@@ -112,7 +112,7 @@ module resources 'resources.bicep' = {
     location: location
     openAiLocation: openAiLocation
     tags: tags
-    principalId: principalId
+    keycloakAdminAddresses: keycloakAdminAddresses
     tenants: tenants
     smtpConnection: smtpConnection
     senderAddress: senderAddress
