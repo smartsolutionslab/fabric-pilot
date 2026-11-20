@@ -11,7 +11,7 @@ On Azure (`infra/README.md`, step 6), `infra/keycloak/create-realm.sh` does the 
 2. **Credentials** tab: copy the client secret (or regenerate it). It goes into the secret store below, nowhere else.
 3. **Service account roles** tab → Assign role → filter by clients → `realm-management` → **`manage-users`**, and nothing else. In particular not `realm-admin`, `manage-realm`, `manage-clients`, `view-realm`, `view-users` or `query-groups`: `manage-users` alone permits every call the module makes, and the integration tests check that the local client holds exactly that.
 4. **Realm settings → Events → Admin events settings**: save events **on**, so Keycloak records each change the service account makes. The host logs who asked for it.
-5. **Realm settings → Email**: the realm's real SMTP server (ADR-0015 already requires it), so invitations arrive. Invitation links expire after Keycloak's execute-actions lifespan (12 hours by default); an admin can have one sent again (`PUT /identity/users/{userId}/invitation`).
+5. **Realm settings → Email**: the realm's real SMTP server (docs/adr/fabric/backend-auth-keycloak.md already requires it), so invitations arrive. Invitation links expire after Keycloak's execute-actions lifespan (12 hours by default); an admin can have one sent again (`PUT /identity/users/{userId}/invitation`).
 6. The realm must have the roles `customer-user` and `customer-admin` (a composite including `customer-user`) and a group `/tenants/<tenant>` per tenant; the module creates neither.
 
 ## The staff reader, in the deployed realm
@@ -32,4 +32,4 @@ Either client's the same way: regenerate it on the client's Credentials tab, upd
 
 ## Locally
 
-Nothing to do: the AppHost generates both secrets once, keeps them in its user secrets and passes them to Keycloak, whose realm import substitutes them into the clients. A Keycloak volume created before a client existed keeps the old realm, which is never imported again: remove the volume once (ADR-0015).
+Nothing to do: the AppHost generates both secrets once, keeps them in its user secrets and passes them to Keycloak, whose realm import substitutes them into the clients. A Keycloak volume created before a client existed keeps the old realm, which is never imported again: remove the volume once (docs/adr/fabric/backend-auth-keycloak.md).

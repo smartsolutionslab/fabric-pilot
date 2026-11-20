@@ -4,9 +4,9 @@
 
 ## Context
 
-A customer admin manages the users of their own tenant (#14). The `identity` module does it through Keycloak's admin API; Keycloak is its only store and it has no table. The tenant is the caller's, from their token (`ITenantContext`), as everywhere else (ADR-0018).
+A customer admin manages the users of their own tenant (#14). The `identity` module does it through Keycloak's admin API; Keycloak is its only store and it has no table. The tenant is the caller's, from their token (`ITenantContext`), as everywhere else (docs/adr/fabric/backend-tenancy-column.md).
 
-Staff must also manage any tenant's admins, for instance to give a new customer its first admin. Staff belong to no tenant, so the caller's token names none. The one existing way for staff to reach every tenant, `AcrossTenants()` (ADR-0018), opens `TenantScope.AllTenants()`, whose contract is that it **writes nothing**; its interceptor guards the module's DbContext, which a call to Keycloak never passes through. Using it for these writes would break what it means while passing its checks.
+Staff must also manage any tenant's admins, for instance to give a new customer its first admin. Staff belong to no tenant, so the caller's token names none. The one existing way for staff to reach every tenant, `AcrossTenants()` (docs/adr/fabric/backend-tenancy-column.md), opens `TenantScope.AllTenants()`, whose contract is that it **writes nothing**; its interceptor guards the module's DbContext, which a call to Keycloak never passes through. Using it for these writes would break what it means while passing its checks.
 
 ## Decision
 
