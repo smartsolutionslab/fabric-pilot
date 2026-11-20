@@ -3,12 +3,6 @@ import { expect, test, vi } from 'vitest';
 import { DocumentsPage } from './DocumentsPage';
 import type { ManagePermission } from './useCanManage';
 
-// The page's samples come through useDocumentsSamples, which the page's own test reads; here they are still loading.
-vi.mock('./useDocumentsSamples', () => ({
-  useDocumentsSamples: () => ({ samples: undefined, isLoading: true, isError: false }),
-  useCreateDocumentsSample: () => ({ create: () => Promise.resolve(false), isSaving: false }),
-}));
-
 // The page asks the module's permission probe, whose own test, useCanManage.test.tsx, reads a 200, a 403 and a failure;
 // here the answer is the test's. The page's axe check asks nothing of this, so a project that rewrites the page owns
 // this test with it.
