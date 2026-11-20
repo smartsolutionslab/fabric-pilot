@@ -20,7 +20,7 @@ public class RaiseTicketTests
         var screenshot = Encoding.UTF8.GetBytes("a screenshot");
         var log = Encoding.UTF8.GetBytes("a log file");
 
-        var result = await Handle(new RaiseTicket("Printer offline", "Error 42.", "Urgent", [File("screenshot.png", "image/png", screenshot), File("app.log", "text/plain", log)]));
+        var result = await Handle(new RaiseTicket("Printer offline", "Error 42.", "Urgent", Customers.Developer, [File("screenshot.png", "image/png", screenshot), File("app.log", "text/plain", log)]));
 
         result.IsSuccess.ShouldBeTrue();
         var ticket = tickets.Saved.ShouldHaveSingleItem();
@@ -28,6 +28,8 @@ public class RaiseTicketTests
         ticket.Subject.ShouldBe("Printer offline");
         ticket.Priority.ShouldBe(TicketPriority.Urgent);
         ticket.RaisedAt.ShouldBe(Now);
+        ticket.Customer.ShouldBe(Customers.Developer);
+        ticket.Status.ShouldBe(TicketStatus.Open);
         ticket.Attachments.Select(attachment => attachment.FileName).ShouldBe(["screenshot.png", "app.log"]);
         blobs.Blobs[AttachmentBlobs.Name(ticket.Id, ticket.Attachments[0].Id)].ShouldBe(screenshot);
         blobs.Blobs[AttachmentBlobs.Name(ticket.Id, ticket.Attachments[1].Id)].ShouldBe(log);
@@ -39,7 +41,7 @@ public class RaiseTicketTests
     {
         var oversized = new NewAttachment("huge.iso", "application/octet-stream", Attachment.MaximumSize + 1, Stream.Null);
 
-        var result = await Handle(new RaiseTicket("Subject", "Description", "Normal", [File("fine.txt", "text/plain", [1, 2, 3]), oversized]));
+        var result = await Handle(new RaiseTicket("Subject", "Description", "Normal", Customers.Developer, [File("fine.txt", "text/plain", [1, 2, 3]), oversized]));
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("tickets.attachment-too-large");
@@ -55,7 +57,7 @@ public class RaiseTicketTests
     [InlineData("")]
     public async Task A_priority_that_is_not_one_of_the_named_ones_is_refused(string priority)
     {
-        var result = await Handle(new RaiseTicket("Subject", "Description", priority, []));
+        var result = await Handle(new RaiseTicket("Subject", "Description", priority, Customers.Developer, []));
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("tickets.unknown-priority");
@@ -66,7 +68,7 @@ public class RaiseTicketTests
     [Fact]
     public async Task A_ticket_without_a_subject_is_refused_with_the_domains_code()
     {
-        var result = await Handle(new RaiseTicket(" ", "Description", "Low", []));
+        var result = await Handle(new RaiseTicket(" ", "Description", "Low", Customers.Developer, []));
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("tickets.invalid-subject");

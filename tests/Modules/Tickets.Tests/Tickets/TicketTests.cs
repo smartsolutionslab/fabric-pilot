@@ -7,6 +7,8 @@ public class TicketTests
 {
     private static readonly DateTimeOffset RaisedAt = new(2026, 11, 12, 9, 30, 0, TimeSpan.Zero);
 
+    private static readonly TicketCustomer Customer = new("5b0c1d2e-3f40-4a51-8b62-7c83d94e05f6", "customer@example.com");
+
     [Fact]
     public void A_ticket_is_raised_with_its_subject_description_priority_and_attachments()
     {
@@ -26,6 +28,107 @@ public class TicketTests
         ticket.Attachments.Select(attachment => (attachment.Id, attachment.FileName, attachment.ContentType, attachment.Size))
             .ShouldBe([(screenshot.Id, "screenshot.png", "image/png", 2048L), (log.Id, "app.log", "application/octet-stream", 512L)]);
         ticket.DomainEvents.ShouldHaveSingleItem().ShouldBe(new TicketRaised(id));
+    }
+
+    [Fact]
+    public void A_raised_ticket_is_open_unassigned_and_records_the_customer_who_raised_it()
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+
+        ticket.Status.ShouldBe(TicketStatus.Open);
+        ticket.Assignee.ShouldBeNull();
+        ticket.Customer.ShouldBe(Customer);
+    }
+
+    [Fact]
+    public void Changing_a_tickets_status_records_the_new_one_and_raises_the_change()
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+
+        var changed = ticket.ChangeStatus(TicketStatus.Resolved);
+
+        changed.ShouldBeTrue();
+        ticket.Status.ShouldBe(TicketStatus.Resolved);
+        ticket.DomainEvents[^1].ShouldBe(new TicketStatusChanged(ticket.Id, TicketStatus.Open, TicketStatus.Resolved));
+    }
+
+    [Fact]
+    public void Changing_a_tickets_status_to_the_one_it_has_changes_nothing()
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+        ticket.ChangeStatus(TicketStatus.InProgress);
+        var events = ticket.DomainEvents.Count;
+
+        var changed = ticket.ChangeStatus(TicketStatus.InProgress);
+
+        changed.ShouldBeFalse();
+        ticket.Status.ShouldBe(TicketStatus.InProgress);
+        ticket.DomainEvents.Count.ShouldBe(events);
+    }
+
+    [Fact]
+    public void Assigning_a_ticket_records_the_staff_member_trimmed_and_raises_the_assignment()
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+
+        var assigned = ticket.AssignTo("  staff  ");
+
+        assigned.IsSuccess.ShouldBeTrue();
+        assigned.Value.ShouldBeTrue();
+        ticket.Assignee.ShouldBe("staff");
+        ticket.DomainEvents[^1].ShouldBe(new TicketAssigned(ticket.Id, "staff"));
+    }
+
+    [Fact]
+    public void Assigning_a_ticket_to_whom_it_is_assigned_already_changes_nothing()
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+        ticket.AssignTo("staff");
+        var events = ticket.DomainEvents.Count;
+
+        var assigned = ticket.AssignTo("staff");
+
+        assigned.IsSuccess.ShouldBeTrue();
+        assigned.Value.ShouldBeFalse();
+        ticket.DomainEvents.Count.ShouldBe(events);
+    }
+
+    [Fact]
+    public void A_ticket_assigned_to_someone_else_is_reassigned()
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+        ticket.AssignTo("staff");
+
+        var assigned = ticket.AssignTo("colleague");
+
+        assigned.Value.ShouldBeTrue();
+        ticket.Assignee.ShouldBe("colleague");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void A_ticket_cannot_be_assigned_to_nobody(string assignee)
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+
+        var assigned = ticket.AssignTo(assignee);
+
+        assigned.IsFailure.ShouldBeTrue();
+        assigned.Error.Value.ShouldBeOfType<InvalidAssignee>();
+        ticket.Assignee.ShouldBeNull();
+    }
+
+    [Fact]
+    public void An_assignee_of_the_maximum_length_is_accepted_and_one_longer_is_refused()
+    {
+        var ticket = Raise(TicketId.New(), "Printer offline", "Error 42.", TicketPriority.Normal, []).Value;
+
+        ticket.AssignTo(new string('a', Ticket.MaximumAssigneeLength)).IsSuccess.ShouldBeTrue();
+        var assigned = ticket.AssignTo(new string('a', Ticket.MaximumAssigneeLength + 1));
+
+        assigned.IsFailure.ShouldBeTrue();
+        assigned.Error.Value.ShouldBeOfType<InvalidAssignee>();
     }
 
     [Fact]
@@ -152,5 +255,5 @@ public class TicketTests
     private static AttachmentFile File(string name, long size, string contentType = "application/octet-stream") => new(AttachmentId.New(), name, contentType, size);
 
     private static Result<Ticket, TicketError> Raise(TicketId id, string subject, string description, TicketPriority priority, IReadOnlyList<AttachmentFile> attachments) =>
-        Ticket.Raise(id, subject, description, priority, attachments, RaisedAt);
+        Ticket.Raise(id, subject, description, priority, Customer, attachments, RaisedAt);
 }

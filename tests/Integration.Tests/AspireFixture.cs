@@ -12,14 +12,29 @@ namespace FabricPilot.Integration.Tests;
 /// <summary>The whole application, started once per test run on empty containers.</summary>
 public sealed class AspireFixture : IAsyncLifetime
 {
-    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(5);
+    /// <summary>The one user the authenticating SMTP server (<see cref="AuthenticatingSmtp"/>) accepts mail from.</summary>
+    public const string SmtpUserName = "portal";
 
-    private readonly FakeModelServer model = new();
+    /// <summary>That user's password: a test's own, not a secret.</summary>
+    public const string SmtpPassword = "correct-horse";
+
+    /// <summary>
+    /// A second Mailpit, only in the tests, that accepts mail only from a signed-in client, as most providers do. The
+    /// AppHost's Mailpit stays open: Keycloak and local runs send to it without credentials.
+    /// </summary>
+    public const string AuthenticatingSmtp = "smtp-authenticating";
+
+    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(5);
 
     private DistributedApplication? app;
 
-    /// <summary>The host's model, chat and embeddings: a stand-in a test gives its answers and can slow down.</summary>
-    public FakeModelServer Model => model;
+    private readonly FakeEmbeddingsServer embeddings = new();
+
+    /// <summary>
+    /// The host's model, embeddings and chat on one endpoint: a stand-in on this machine, which a test can hold an
+    /// embeddings answer back from and give a chat answer.
+    /// </summary>
+    public FakeEmbeddingsServer Embeddings => embeddings;
 
     public DistributedApplication App => app ?? throw new InvalidOperationException("The application has not started.");
 
@@ -37,16 +52,26 @@ public sealed class AspireFixture : IAsyncLifetime
             }
         }
 
-        // The integration tests never call the model: the endpoint is a stand-in on this machine that answers embeddings
-        // with FakeEmbeddingGenerator's vectors, so publishing indexes, and a chat request with the FakeChatClient a test
-        // registered for it, refusing the rest; the key is a key-shaped value no provider accepts.
-        builder.Configuration["Parameters:azure-openai-endpoint"] = model.Endpoint;
+        // A key-shaped value Azure does not accept: the integration tests never call the model. The endpoint is the fixture's
+        // embeddings stand-in, given below, which answers a chat request with the FakeChatClient a test gave it, else a 404.
         builder.Configuration["Parameters:azure-openai-api-key"] = "not-a-real-key";
-        // Embeddings use the chat model's azure-openai-endpoint and azure-openai-api-key, given their values above.
+        // Embeddings use the chat model's azure-openai-api-key, given its value above, and the endpoint the chat model shares:
+        // the fixture's stand-in, which ends in /v1 and is used as is. It answers embeddings, and a chat request with the
+        // FakeChatClient a test gave it, else a 404.
+        builder.Configuration["Parameters:azure-openai-endpoint"] = embeddings.Endpoint;
+
+        // Without TLS, which Mailpit does not offer: the sender is told it may send unencrypted, as it is for the AppHost's.
+        builder.AddContainer(AuthenticatingSmtp, "axllent/mailpit", "v1.33")
+            .WithEnvironment("MP_SMTP_AUTH", $"{SmtpUserName}:{SmtpPassword}")
+            .WithEnvironment("MP_SMTP_AUTH_ALLOW_INSECURE", "true")
+            .WithHttpEndpoint(targetPort: 8025)
+            .WithEndpoint(targetPort: 1025, name: "smtp")
+            .WithHttpHealthCheck("/livez");
 
         app = await builder.BuildAsync(timeout.Token);
         await app.StartAsync(timeout.Token);
         await app.ResourceNotifications.WaitForResourceHealthyAsync("host", timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync(AuthenticatingSmtp, timeout.Token);
     }
 
     public HttpClient CreateHostClient() => App.CreateHttpClient("host");
@@ -79,7 +104,7 @@ public sealed class AspireFixture : IAsyncLifetime
             await app.DisposeAsync();
         }
 
-        await model.DisposeAsync();
+        await embeddings.DisposeAsync();
     }
 
     private sealed record TokenResponse([property: JsonPropertyName("access_token")] string AccessToken);

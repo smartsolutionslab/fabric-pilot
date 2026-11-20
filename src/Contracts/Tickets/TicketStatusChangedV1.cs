@@ -2,7 +2,7 @@ namespace FabricPilot.Contracts.Tickets;
 
 /// <summary>
 /// A ticket's status changed; the customer who raised it is told. Published through the tickets module's unit of work
-/// by the use case that changes a status (#7), in the ticket's tenant. Statuses travel by name.
+/// by the use case that changes a status, in the ticket's tenant. Statuses travel by name.
 /// </summary>
 /// <param name="TicketId">The ticket whose status changed.</param>
 /// <param name="Subject">The ticket's subject, as its customer wrote it.</param>

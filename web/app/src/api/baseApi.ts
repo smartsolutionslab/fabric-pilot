@@ -1,4 +1,10 @@
-import { type BaseQueryFn, createApi, type FetchArgs, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import {
+  type BaseQueryFn,
+  createApi,
+  type FetchArgs,
+  type FetchBaseQueryError,
+  fetchBaseQuery,
+} from '@reduxjs/toolkit/query/react';
 import { accessToken } from '@/auth/accessToken';
 import openApi from '../../openapi.json';
 
@@ -80,7 +86,8 @@ export async function readResponse(response: Response): Promise<unknown> {
 
 const fetchFromHost = fetchBaseQuery({ baseUrl: '/api', prepareHeaders, responseHandler: readResponse });
 
-const baseQuery: BaseQueryFn<string | FetchArgs> = (args, api, extraOptions) =>
+// Typed with fetchBaseQuery's own error, so a hook's error carries the HTTP status (useCanManage reads a 403 from it).
+const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = (args, api, extraOptions) =>
   fetchFromHost(typeof args === 'string' ? args : { ...args, body: requestBody(args) }, api, extraOptions);
 
 /** The API the generated endpoints (src/api/generated.ts) are injected into; /api reaches the host. */

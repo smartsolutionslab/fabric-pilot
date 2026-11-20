@@ -1,0 +1,88 @@
+using FabricPilot.BuildingBlocks.Tenancy;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi;
+
+namespace Microsoft.AspNetCore.Builder;
+
+public static class TenantEndpoints
+{
+    /// <summary>The route parameter that names the tenant: <c>{tenant}</c>, as in <c>/contracts/{tenant}</c>.</summary>
+    public const string TenantParameter = "tenant";
+
+    /// <summary>The <c>code</c> of the problem a tenant missing from <see cref="ITenantDirectory"/> answers.</summary>
+    public const string TenantNotFound = "tenant-not-found";
+
+    /// <summary>
+    /// The endpoint writes for the tenant its route names (a <c>{tenant}</c> parameter): its handler runs inside
+    /// <see cref="TenantScope.ForTenant"/>, as that tenant's own users' requests do, so it reads that tenant's rows alone,
+    /// and what it saves or publishes belongs to that tenant. The command stays free of a tenant. A tenant
+    /// <see cref="ITenantDirectory"/> does not list answers <c>404</c> problem details with the code
+    /// <see cref="TenantNotFound"/> before the handler runs, and mapping a route without a <c>{tenant}</c> parameter fails
+    /// when the host maps it. The OpenAPI document describes the route's <c>{tenant}</c> as a required string path
+    /// parameter whether or not the handler binds it, so a handler never takes a tenant it does not read. The filter runs
+    /// after authorization, so name a policy that requires <see cref="CrossTenantRole"/> as well, as
+    /// <c>.RequireAuthorization(&lt;Module&gt;PolicyNames.WriteForTenants).ForTenant()</c> does; the architecture rule
+    /// <c>ForTenantRequiresTheCrossTenantRole</c> fails the build otherwise, and for an endpoint also mapped with
+    /// <c>AcrossTenants()</c> or <c>WritesSharedRecords()</c>.
+    /// </summary>
+    public static RouteHandlerBuilder ForTenant(this RouteHandlerBuilder endpoint)
+    {
+        Ensure.That(endpoint).IsNotNull();
+
+        endpoint.Add(builder =>
+        {
+            if (builder is RouteEndpointBuilder route && route.RoutePattern.GetParameter(TenantParameter) is null)
+            {
+                throw new InvalidOperationException($"{Name(route)} is mapped with ForTenant(), but its route has no {{{TenantParameter}}} parameter: name the tenant in the route, as /contracts/{{{TenantParameter}}} does.");
+            }
+        });
+
+        return endpoint
+            .WithMetadata(new WritesForTenant())
+            .AddOpenApiOperationTransformer((operation, context, cancellationToken) =>
+            {
+                operation.Parameters ??= [];
+                if (!operation.Parameters.Any(parameter => parameter.Name == TenantParameter && parameter.In == ParameterLocation.Path))
+                {
+                    operation.Parameters.Insert(0, new OpenApiParameter
+                    {
+                        Name = TenantParameter,
+                        In = ParameterLocation.Path,
+                        Required = true,
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String },
+                    });
+                }
+
+                return Task.CompletedTask;
+            })
+            .AddEndpointFilter(async (context, next) =>
+            {
+                var tenant = context.HttpContext.GetRouteValue(TenantParameter) as string;
+                var directory = context.HttpContext.RequestServices.GetRequiredService<ITenantDirectory>();
+                if (tenant is null || !directory.Contains(tenant))
+                {
+                    return TypedResults.Problem(new ProblemDetails
+                    {
+                        Status = StatusCodes.Status404NotFound,
+                        Title = "There is no such tenant.",
+                        Detail = "Choose one of the tenants GET /tenants lists.",
+                        Extensions = { ["code"] = TenantNotFound },
+                    });
+                }
+
+                using var forTenant = TenantScope.ForTenant(tenant);
+                return await next(context);
+            });
+    }
+
+    private static string Name(RouteEndpointBuilder route)
+    {
+        var methods = route.Metadata.OfType<IHttpMethodMetadata>().LastOrDefault()?.HttpMethods ?? [];
+        var path = "/" + route.RoutePattern.RawText?.TrimStart('/');
+        return methods.Count == 0 ? path : $"{string.Join(',', methods)} {path}";
+    }
+}

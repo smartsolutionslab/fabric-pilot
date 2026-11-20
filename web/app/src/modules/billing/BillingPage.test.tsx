@@ -74,6 +74,12 @@ test(
   },
 );
 
+test('the page is headed Invoices, what the customer comes to it for', () => {
+  renderPage();
+
+  expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName('Invoices');
+});
+
 test('downloading an invoice saves its PDF under the invoice number', async () => {
   const user = userEvent.setup();
   const createObjectURL = vi.fn(() => 'blob:the-invoice');

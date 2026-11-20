@@ -16,4 +16,7 @@ public static class KnowledgePolicyNames
 
     /// <summary>Staff write the records shared by all tenants: name it on an endpoint mapped with <c>WritesSharedRecords()</c>.</summary>
     public const string WriteSharedRecords = "knowledge.write-shared-records";
+
+    /// <summary>Staff write into the tenant the route names: name it on an endpoint mapped with <c>ForTenant()</c>.</summary>
+    public const string WriteForTenants = "knowledge.write-for-tenants";
 }

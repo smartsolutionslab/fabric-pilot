@@ -24,7 +24,7 @@ public class KnowledgeSuggestedAnswersTests(AspireFixture aspire)
         using var staff = await aspire.CreateHostClientAsync("staff");
         var id = await WriteAndPublishAsync(staff, $"Printer {word}", $"Restart the spooler when {word} appears.");
         using var model = new FakeChatClient("""{"answered":true,"answer":"Please restart the print spooler.","sources":[1]}""");
-        using var answering = aspire.Model.Answer(word, model);
+        using var answering = aspire.Embeddings.Answer(word, model);
 
         var suggestion = await SuggestAsync(staff, $"Printer {word} Restart the spooler when {word} appears.");
 
@@ -48,7 +48,7 @@ public class KnowledgeSuggestedAnswersTests(AspireFixture aspire)
         using var staff = await aspire.CreateHostClientAsync("staff");
         await WriteAndPublishAsync(staff, $"Vpn {word}", $"Install the client and sign in with {word}.");
         using var model = new FakeChatClient("""{"answered":false,"answer":"","sources":[]}""");
-        using var answering = aspire.Model.Answer(word, model);
+        using var answering = aspire.Embeddings.Answer(word, model);
 
         var suggestion = await SuggestAsync(staff, $"Our invoices show the wrong address {word}.");
 
@@ -66,8 +66,8 @@ public class KnowledgeSuggestedAnswersTests(AspireFixture aspire)
         using var staff = await aspire.CreateHostClientAsync("staff");
         var id = await WriteAndPublishAsync(staff, $"Guidance {word}", $"Previous guidance {word} restart the router.");
         using var model = new FakeChatClient("""{"answered":false,"answer":"","sources":[]}""");
-        using var answering = aspire.Model.Answer(word, model);
-        using var slowEmbeddings = aspire.Model.Hold(held);
+        using var answering = aspire.Embeddings.Answer(word, model);
+        using var slowEmbeddings = aspire.Embeddings.Hold(held);
         var editing = staff.PutAsJsonAsync(new Uri($"{Articles}/{id}", UriKind.Relative), new { title = $"Guidance {word}", body = $"Current guidance {word} {held} call support." }, TestContext.Current.CancellationToken);
         await slowEmbeddings.Arrived.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 

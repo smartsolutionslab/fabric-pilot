@@ -1,0 +1,127 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace FabricPilot.Architecture.Tests.Rules;
+
+/// <summary>
+/// A settings file is committed, copied into every build output and read by anyone with the repository, so a key, a
+/// password or any other secret never goes in one: it is an Aspire secret parameter, set with <c>dotnet user-secrets</c>
+/// or the deployment's secret store. A key is found by its name (<c>ApiKey</c>, <c>api-key</c>, ...); another secret by
+/// the last segment of its name, ignoring case, <c>-</c> and <c>_</c>: one ending in <c>secret</c>, <c>password</c>,
+/// <c>passwd</c> or <c>token</c>, or <c>pwd</c> itself; a password inside a connection string by its <c>Password=</c>
+/// or <c>Pwd=</c> part, and one inside a URI by its user-info (<c>amqp://user:password@host</c>), whatever the setting
+/// is named. An empty or blank value is no secret. A violation names the file and the setting, never the value.
+/// With a model, a value with the prefix model providers' keys carry (<c>sk-</c>) is a key too.
+/// </summary>
+public sealed partial class NoSecretInSettings : IArchitectureRule
+{
+    private static readonly string[] Skipped = ["bin", "obj", "node_modules", ".git"];
+
+    private static readonly string[] SecretNameEndings = ["secret", "password", "passwd", "token"];
+
+    private static readonly JsonDocumentOptions Lenient = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
+
+    public string Description => "No appsettings*.json holds an API key, a secret, a password or a token; each is an Aspire secret parameter (AddParameter(..., secret: true)).";
+
+    public IEnumerable<string> Violations(ArchitectureModel model)
+    {
+        Ensure.That(model).IsNotNull();
+
+        var root = RepositoryRoot();
+        List<string> violations = [];
+        foreach (var path in SettingsFiles(root))
+        {
+            var file = Path.GetRelativePath(root, path).Replace('\\', '/');
+            try
+            {
+                using var settings = JsonDocument.Parse(File.ReadAllText(path), Lenient);
+                violations.AddRange(Settings(settings.RootElement, string.Empty)
+                    .Select(setting => Violation(file, setting.Key, setting.Value))
+                    .OfType<string>());
+            }
+            catch (JsonException exception)
+            {
+                violations.Add($"{file}:{exception.LineNumber + 1}: is not valid JSON.");
+            }
+        }
+
+        return violations;
+    }
+
+    private static IEnumerable<string> SettingsFiles(string root) =>
+        Directory.EnumerateFiles(root, "appsettings*.json", SearchOption.AllDirectories)
+            .Where(path => !Path.GetRelativePath(root, path).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(Skipped.Contains))
+            .Order(StringComparer.Ordinal);
+
+    /// <summary>Every string value, with its configuration key (<c>Anthropic:ApiKey</c>).</summary>
+    private static IEnumerable<KeyValuePair<string, string>> Settings(JsonElement element, string key) =>
+        element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject().SelectMany(property => Settings(property.Value, Child(key, property.Name))),
+            JsonValueKind.Array => element.EnumerateArray().SelectMany((item, index) => Settings(item, Child(key, index.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+            JsonValueKind.String => [new(key, element.GetString()!)],
+            _ => [],
+        };
+
+    private static string Child(string key, string name) => key.Length == 0 ? name : $"{key}:{name}";
+
+    /// <summary>What is wrong with one setting, naming the file and the setting but never the value; null when nothing is.</summary>
+    private static string? Violation(string file, string key, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var name = key[(key.LastIndexOf(':') + 1)..].Replace("-", string.Empty, StringComparison.Ordinal).Replace("_", string.Empty, StringComparison.Ordinal);
+        if (name.Contains("apikey", StringComparison.OrdinalIgnoreCase) || value.StartsWith("sk-", StringComparison.Ordinal))
+        {
+            return $"{file}: '{key}' holds an API key; make it an Aspire secret parameter and set it with dotnet user-secrets, never in a settings file.";
+        }
+
+        if (name.Equals("pwd", StringComparison.OrdinalIgnoreCase) || SecretNameEndings.Any(ending => name.EndsWith(ending, StringComparison.OrdinalIgnoreCase)))
+        {
+            return $"{file}: '{key}' holds a secret; make it an Aspire secret parameter and set it with dotnet user-secrets, never in a settings file.";
+        }
+
+        if (PasswordPart().IsMatch(value))
+        {
+            return $"{file}: '{key}' holds a password in a connection string; a connection string comes from Aspire, its password from an Aspire secret parameter, never from a settings file.";
+        }
+
+        if (HoldsPasswordInUri(value))
+        {
+            return $"{file}: '{key}' holds a password in a URI; a connection string comes from Aspire, its password from an Aspire secret parameter, never from a settings file.";
+        }
+
+        return null;
+    }
+
+    /// <summary>An absolute URI whose user-info holds a password (<c>amqp://user:password@host</c>, <c>redis://:password@host</c>).</summary>
+    private static bool HoldsPasswordInUri(string value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        var colon = uri.UserInfo.IndexOf(':');
+        return colon >= 0 && colon < uri.UserInfo.Length - 1;
+    }
+
+    /// <summary>A connection string's <c>Password=</c> or <c>Pwd=</c> part with a value.</summary>
+    [GeneratedRegex(@"(?:^|;)\s*(?:password|pwd)\s*=\s*[^;\s]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex PasswordPart();
+
+    /// <summary>The project root: the directory above the test output that holds build.proj.</summary>
+    private static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "build.proj")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("build.proj not found above the test output directory.");
+    }
+}

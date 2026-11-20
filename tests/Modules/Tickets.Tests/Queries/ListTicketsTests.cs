@@ -68,6 +68,7 @@ public class ListTicketsTests
             subject,
             "Description",
             priority,
+            Customers.Developer,
             [.. Enumerable.Range(1, attachments).Select(number => new AttachmentFile(AttachmentId.New(), $"file{number}.txt", "text/plain", 1))],
             at).Value;
 }

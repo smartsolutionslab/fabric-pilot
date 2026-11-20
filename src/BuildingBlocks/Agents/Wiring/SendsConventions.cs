@@ -1,0 +1,18 @@
+using FabricPilot.BuildingBlocks.Agents;
+
+namespace Microsoft.AspNetCore.Builder;
+
+public static class SendsConventions
+{
+    /// <summary>
+    /// Names the command or query this endpoint sends. An agent's tool for <typeparamref name="TRequest"/> then requires
+    /// of its caller what this endpoint requires (its policies, or sign-in alone): the policy is declared once, here.
+    /// </summary>
+    public static RouteHandlerBuilder Sends<TRequest>(this RouteHandlerBuilder builder)
+        where TRequest : class
+    {
+        Ensure.That(builder).IsNotNull();
+
+        return builder.WithMetadata(new SendsRequest(typeof(TRequest)));
+    }
+}

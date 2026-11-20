@@ -20,7 +20,9 @@ public sealed class TicketStatusChangedV1Consumer(INoticeStore notices, IEmailSe
         Ensure.That(message).IsNotNull();
 
         using var tenant = TenantScope.Begin(message.Metadata);
-        var (ticketId, subject, previousStatus, status, customerUserId, customerEmail) = message;
+        var (ticketId, subject, previousStatusName, statusName, customerUserId, customerEmail) = message;
+        var previousStatus = TicketStatusWords.For(previousStatusName);
+        var status = TicketStatusWords.For(statusName);
         var eventIdentifier = message.Metadata.EventIdentifier;
 
         var found = await notices.FindCausedByAsync(eventIdentifier, cancellationToken);

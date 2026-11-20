@@ -2,6 +2,7 @@
   "realm": "fabric-pilot",
   "enabled": true,
   "registrationAllowed": false,
+  "adminEventsEnabled": true,
   "smtpServer": {
     "host": "mailpit",
     "port": "1025",
@@ -38,6 +39,30 @@
       "clientId": "fabric-pilot-api",
       "enabled": true,
       "bearerOnly": true
+    },
+    {
+      "clientId": "fabric-pilot-user-admin",
+      "description": "The identity module's service account: manages a tenant's users through the admin API. Its secret is the AppHost's parameter keycloak-user-admin-secret.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${FABRIC_PILOT_USER_ADMIN_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "fabric-pilot-staff-reader",
+      "description": "The identity module's read-only service account: lists the staff role's members (docs/adr/0053). Its secret is the AppHost's parameter keycloak-staff-reader-secret.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${FABRIC_PILOT_STAFF_READER_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false
     },
     {
       "clientId": "fabric-pilot-web",
@@ -159,6 +184,29 @@
       "groups": ["/tenants/tenant-a"]
     },
     {
+      "username": "tenant-b-admin",
+      "enabled": true,
+      "email": "tenant-b-admin@example.com",
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Tenant B Admin",
+      "credentials": [{ "type": "password", "value": "tenant-b-admin", "temporary": false }],
+      "realmRoles": ["customer-admin"],
+      "groups": ["/tenants/tenant-b"]
+    },
+    {
+      "username": "service-account-fabric-pilot-user-admin",
+      "enabled": true,
+      "serviceAccountClientId": "fabric-pilot-user-admin",
+      "clientRoles": { "realm-management": ["manage-users"] }
+    },
+    {
+      "username": "service-account-fabric-pilot-staff-reader",
+      "enabled": true,
+      "serviceAccountClientId": "fabric-pilot-staff-reader",
+      "clientRoles": { "realm-management": ["query-users", "view-realm"] }
+    },
+    {
       "username": "staff",
       "enabled": true,
       "email": "staff@example.com",
@@ -166,6 +214,16 @@
       "firstName": "Local",
       "lastName": "Staff",
       "credentials": [{ "type": "password", "value": "staff", "temporary": false }],
+      "realmRoles": ["staff"]
+    },
+    {
+      "username": "staff-b",
+      "enabled": true,
+      "email": "staff-b@example.com",
+      "emailVerified": true,
+      "firstName": "Second",
+      "lastName": "Staff",
+      "credentials": [{ "type": "password", "value": "staff-b", "temporary": false }],
       "realmRoles": ["staff"]
     }
   ]

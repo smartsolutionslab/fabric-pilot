@@ -15,14 +15,19 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/AppHost/AppHost.csproj" />
+    <!-- The fake embeddings server answers with FakeEmbeddingGenerator's vectors, of the vector tables' size. -->
+    <ProjectReference Include="../../src/BuildingBlocks/BuildingBlocks.csproj" />
+    <Compile Include="../Fakes/FakeEmbeddingGenerator.cs" Link="Fakes/FakeEmbeddingGenerator.cs" />
     <!-- The contracts tests record contracts through the module's DbContext: no use case records one yet. -->
     <ProjectReference Include="../../src/Modules/Contracts/Contracts.Infrastructure/Contracts.Infrastructure.csproj" />
     <!-- The billing tests record invoices through the module's DbContext: no use case issues one yet. -->
     <ProjectReference Include="../../src/Modules/Billing/Billing.Infrastructure/Billing.Infrastructure.csproj" />
     <!-- The knowledge tests search the shared index as a tenant's use case would, with the fake embeddings the host is given. -->
     <ProjectReference Include="../../src/Modules/Knowledge/Knowledge.Infrastructure/Knowledge.Infrastructure.csproj" />
+    <!-- The SMTP authentication tests send through the module's sender, configured as the host configures it. -->
+    <ProjectReference Include="../../src/Modules/Notifications/Notifications.Infrastructure/Notifications.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Contracts/Contracts.csproj" />
-    <Compile Include="../Fakes/FakeEmbeddingGenerator.cs" Link="Fakes/FakeEmbeddingGenerator.cs" />
+    <!-- The chat model shares the embeddings' endpoint: the fake server answers chat with the FakeChatClient a test gives it. -->
     <Compile Include="../Fakes/FakeChatClient.cs" Link="Fakes/FakeChatClient.cs" />
   </ItemGroup>
 

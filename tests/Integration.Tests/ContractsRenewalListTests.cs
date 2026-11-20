@@ -16,12 +16,10 @@ public class ContractsRenewalListTests(AspireFixture aspire)
     public async Task Staff_see_every_tenants_contracts_up_for_renewal_the_soonest_first_and_no_others()
     {
         var today = DateOnly.FromDateTime(TimeProvider.System.GetUtcNow().UtcDateTime);
-        var tenantA = Renewing($"Managed printing {Guid.CreateVersion7()}", today.AddDays(30));
-        var tenantB = Renewing($"Hosting {Guid.CreateVersion7()}", today.AddDays(60));
-        var tooLate = Renewing($"Backup {Guid.CreateVersion7()}", today.AddDays(Contract.RenewalWindowDays + 30));
-        var ending = Contract.Conclude(ContractId.New(), $"Migration project {Guid.CreateVersion7()}", today.AddDays(-100), today.AddDays(10), ContractRenewal.Ends).Value;
-        await ContractsTable.RecordAsync(aspire, "tenant-a", [tenantA, tooLate, ending], TestContext.Current.CancellationToken);
-        await ContractsTable.RecordAsync(aspire, "tenant-b", [tenantB], TestContext.Current.CancellationToken);
+        var tenantA = await RenewingAsync("tenant-a", $"Managed printing {Guid.CreateVersion7()}", today.AddDays(30));
+        var tenantB = await RenewingAsync("tenant-b", $"Hosting {Guid.CreateVersion7()}", today.AddDays(60));
+        var tooLate = await RenewingAsync("tenant-a", $"Backup {Guid.CreateVersion7()}", today.AddDays(Contract.RenewalWindowDays + 30));
+        var ending = await StaffRecordedContracts.RecordAsync(aspire, "tenant-a", $"Migration project {Guid.CreateVersion7()}", today.AddDays(-100), today.AddDays(10), renews: false, TestContext.Current.CancellationToken);
 
         using var client = await aspire.CreateHostClientAsync("staff");
         using var response = await client.GetAsync(new Uri(UpForRenewal, UriKind.Relative), TestContext.Current.CancellationToken);
@@ -30,11 +28,11 @@ public class ContractsRenewalListTests(AspireFixture aspire)
         var ids = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!["items"]!.AsArray()
             .Select(item => item!["id"]!.GetValue<Guid>())
             .ToList();
-        ids.ShouldContain(tenantA.Id.Value);
-        ids.ShouldContain(tenantB.Id.Value);
-        ids.IndexOf(tenantA.Id.Value).ShouldBeLessThan(ids.IndexOf(tenantB.Id.Value));
-        ids.ShouldNotContain(tooLate.Id.Value);
-        ids.ShouldNotContain(ending.Id.Value);
+        ids.ShouldContain(tenantA);
+        ids.ShouldContain(tenantB);
+        ids.IndexOf(tenantA).ShouldBeLessThan(ids.IndexOf(tenantB));
+        ids.ShouldNotContain(tooLate);
+        ids.ShouldNotContain(ending);
     }
 
     [Theory]
@@ -60,6 +58,7 @@ public class ContractsRenewalListTests(AspireFixture aspire)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
-    private static Contract Renewing(string product, DateOnly renewsOn) =>
-        Contract.Conclude(ContractId.New(), product, renewsOn.AddYears(-1), renewsOn.AddDays(-1), ContractRenewal.Renews).Value;
+    /// <summary>A contract whose last day is the day before <paramref name="renewsOn"/>, renewing then.</summary>
+    private Task<Guid> RenewingAsync(string tenant, string product, DateOnly renewsOn) =>
+        StaffRecordedContracts.RecordAsync(aspire, tenant, product, renewsOn.AddYears(-1), renewsOn.AddDays(-1), renews: true, TestContext.Current.CancellationToken);
 }

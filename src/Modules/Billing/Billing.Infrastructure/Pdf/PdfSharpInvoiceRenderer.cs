@@ -9,8 +9,8 @@ namespace FabricPilot.Modules.Billing.Infrastructure.Pdf;
 
 /// <summary>
 /// An A4 page per screenful of lines: the number and dates, a table of the lines (a long description wraps within its
-/// column) and the total. Amounts are written with two decimals and a comma between thousands, whatever the host's
-/// culture, so the same invoice gives the same text everywhere.
+/// column) and the total. Amounts are written with two decimals and a comma between thousands, and dates in the Gregorian
+/// calendar, whatever the host's culture, so the same invoice gives the same text everywhere.
 /// </summary>
 public sealed class PdfSharpInvoiceRenderer : IInvoicePdfRenderer
 {
@@ -26,7 +26,7 @@ public sealed class PdfSharpInvoiceRenderer : IInvoicePdfRenderer
 
     private const string FontFamily = "Invoice";
 
-    private static readonly CultureInfo Numbers = CultureInfo.InvariantCulture;
+    private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
     static PdfSharpInvoiceRenderer()
     {
@@ -48,8 +48,8 @@ public sealed class PdfSharpInvoiceRenderer : IInvoicePdfRenderer
         document.Info.Title = $"Invoice {invoice.Number}";
         var page = new InvoicePage(document);
         page.WriteFitted(Title, $"Invoice {invoice.Number}", 24);
-        page.Write(Body, $"Issued on {invoice.IssuedOn:yyyy-MM-dd}", LineHeight);
-        page.Write(Body, $"Due on {invoice.DueOn:yyyy-MM-dd}", LineHeight * 2);
+        page.Write(Body, string.Create(Invariant, $"Issued on {invoice.IssuedOn:yyyy-MM-dd}"), LineHeight);
+        page.Write(Body, string.Create(Invariant, $"Due on {invoice.DueOn:yyyy-MM-dd}"), LineHeight * 2);
         page.TableHeading(invoice.Currency);
 
         foreach (var line in invoice.Lines)
@@ -63,9 +63,9 @@ public sealed class PdfSharpInvoiceRenderer : IInvoicePdfRenderer
 
             page.Row(
                 description,
-                line.Quantity.ToString(Numbers),
-                line.UnitPrice.ToString("N2", Numbers),
-                line.Amount.ToString("N2", Numbers));
+                line.Quantity.ToString(Invariant),
+                line.UnitPrice.ToString("N2", Invariant),
+                line.Amount.ToString("N2", Invariant));
         }
 
         if (!page.Fits(LineHeight * 2))
@@ -73,7 +73,7 @@ public sealed class PdfSharpInvoiceRenderer : IInvoicePdfRenderer
             page = page.Next(document);
         }
 
-        page.Total($"{invoice.Total.ToString("N2", Numbers)} {invoice.Currency}");
+        page.Total($"{invoice.Total.ToString("N2", Invariant)} {invoice.Currency}");
         page.Dispose();
 
         using var stream = new MemoryStream();

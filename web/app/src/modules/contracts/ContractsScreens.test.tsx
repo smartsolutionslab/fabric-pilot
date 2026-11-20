@@ -8,6 +8,8 @@ import { ContractsScreens } from './ContractsScreens';
 vi.mock('@/api/generated', () => ({
   useGetContractsContractsQuery: vi.fn(),
   useGetContractsContractsUpForRenewalQuery: vi.fn(),
+  useGetTenantsQuery: () => ({ data: { items: ['tenant-a'], totalCount: 1, page: 1, pageSize: 100 }, isError: false }),
+  usePostContractsContractsByTenantMutation: () => [vi.fn(), { isLoading: false }],
 }));
 vi.mock('react-oidc-context', () => ({ useAuth: vi.fn() }));
 
@@ -50,6 +52,14 @@ test('staff are offered the renewal list from the contracts screen', { timeout: 
   expect(screen.getByRole('link', { name: 'Contracts up for renewal' })).toHaveAttribute('href', '/renewals');
 });
 
+test('staff are offered recording a contract from the contracts screen', () => {
+  signInAs('staff');
+
+  renderAt('/');
+
+  expect(screen.getByRole('link', { name: 'Record a contract' })).toHaveAttribute('href', '/record');
+});
+
 test('a tenant user is not offered the renewal list', () => {
   signInAs('developer');
 
@@ -57,6 +67,7 @@ test('a tenant user is not offered the renewal list', () => {
 
   expect(screen.getByRole('heading', { name: 'Contracts' })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Contracts up for renewal' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Record a contract' })).not.toBeInTheDocument();
 });
 
 test('the renewals path shows the renewal list', () => {
@@ -65,5 +76,14 @@ test('the renewals path shows the renewal list', () => {
   renderAt('/renewals');
 
   expect(screen.getByRole('heading', { name: 'Contracts up for renewal' })).toBeInTheDocument();
+  expect(useGetContractsContractsQuery).not.toHaveBeenCalled();
+});
+
+test('the record path shows the form to record a contract', () => {
+  signInAs('staff');
+
+  renderAt('/record');
+
+  expect(screen.getByRole('heading', { name: 'Record a contract' })).toBeInTheDocument();
   expect(useGetContractsContractsQuery).not.toHaveBeenCalled();
 });

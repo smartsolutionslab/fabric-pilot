@@ -7,15 +7,21 @@ namespace FabricPilot.Modules.Notifications.Infrastructure.Email;
 /// Where e-mail goes, whom it is from, and how it is encrypted: the connection string <c>mail</c>
 /// (<c>smtp://host:port</c> for STARTTLS, <c>smtps://host:port</c> for TLS from the start) and
 /// <c>Notifications:SenderAddress</c>. A server that does not offer TLS is refused, unless
-/// <c>Notifications:AllowUnencryptedSmtp</c> is true, which only the AppHost sets, for the local Mailpit.
+/// <c>Notifications:AllowUnencryptedSmtp</c> is true, which only the AppHost sets, for the local Mailpit. A server that
+/// requires authentication is signed in to with <c>Notifications:SmtpUserName</c> and <c>Notifications:SmtpPassword</c>,
+/// given together; without them nothing signs in, as with Mailpit.
 /// </summary>
-public sealed record SmtpSettings(string Host, int Port, string SenderAddress, SecureSocketOptions Security)
+public sealed record SmtpSettings(string Host, int Port, string SenderAddress, SecureSocketOptions Security, SmtpCredentials? Credentials = null)
 {
     private const string MailConnectionName = "mail";
 
     private const string SenderAddressKey = "Notifications:SenderAddress";
 
     private const string AllowUnencryptedKey = "Notifications:AllowUnencryptedSmtp";
+
+    private const string UserNameKey = "Notifications:SmtpUserName";
+
+    private const string PasswordKey = "Notifications:SmtpPassword";
 
     public static SmtpSettings From(IConfiguration configuration)
     {
@@ -33,6 +39,23 @@ public sealed record SmtpSettings(string Host, int Port, string SenderAddress, S
         var security = server.Scheme == "smtps" ? SecureSocketOptions.SslOnConnect
             : configuration.GetValue<bool>(AllowUnencryptedKey) ? SecureSocketOptions.None
             : SecureSocketOptions.StartTls;
-        return new SmtpSettings(server.Host, server.Port, sender, security);
+        return new SmtpSettings(server.Host, server.Port, sender, security, SignInFrom(configuration));
+    }
+
+    private static SmtpCredentials? SignInFrom(IConfiguration configuration)
+    {
+        var userName = configuration[UserNameKey];
+        var password = configuration[PasswordKey];
+        if (string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(password))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password))
+        {
+            throw new InvalidOperationException($"{UserNameKey} and {PasswordKey} are given together or not at all.");
+        }
+
+        return new SmtpCredentials(userName, password);
     }
 }

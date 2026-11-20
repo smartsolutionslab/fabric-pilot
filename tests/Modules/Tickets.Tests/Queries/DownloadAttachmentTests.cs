@@ -14,7 +14,7 @@ public class DownloadAttachmentTests
 
     public DownloadAttachmentTests()
     {
-        ticket = Ticket.Raise(TicketId.New(), "Subject", "Description", TicketPriority.Low, [new AttachmentFile(attachment, "photo.jpg", "image/jpeg", 4)], DateTimeOffset.UnixEpoch).Value;
+        ticket = Ticket.Raise(TicketId.New(), "Subject", "Description", TicketPriority.Low, Customers.Developer, [new AttachmentFile(attachment, "photo.jpg", "image/jpeg", 4)], DateTimeOffset.UnixEpoch).Value;
         store.Saved.Add(ticket);
     }
 
