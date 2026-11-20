@@ -1,7 +1,18 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
-import { expect, test } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { createMemoryRouter, MemoryRouter } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
+import { afterEach, expect, test, vi } from 'vitest';
 import { App } from './App';
+
+// The user menu has its own test; here it stands in, so this test checks the start page.
+vi.mock('@/auth/UserMenu', () => ({ UserMenu: () => <p>The user menu</p> }));
+
+// Without Vitest's globals, Testing Library does not unmount between tests by itself.
+afterEach(() => {
+  cleanup();
+  Reflect.deleteProperty(document, 'startViewTransition');
+});
 
 // The file's first test also pays for warming up jsdom, React and whatever the app's providers load, which in a
 // larger project under parallel load passes 2.5 s of the default 5 s.
@@ -12,5 +23,38 @@ test('the start page names the application', { timeout: 20_000 }, () => {
     </MemoryRouter>,
   );
 
+  expect(screen.getByRole('heading', { name: 'fabric-pilot' })).toBeInTheDocument();
+});
+
+/** The app in a data router, as src/providers/router.tsx runs it, at an address the Home link leaves. */
+function renderAwayFromHome() {
+  const router = createMemoryRouter([{ path: '*', element: <App /> }], { initialEntries: ['/?from=elsewhere'] });
+  render(<RouterProvider router={router} />);
+  return router;
+}
+
+test('the Home link goes to the start page in a view transition where the browser has the API', async () => {
+  // A stand-in for the browser's API: it runs the update at once, as a transition that is skipped does.
+  const startViewTransition = vi.fn((update: () => unknown) => {
+    const done = Promise.resolve(update()).then(() => undefined);
+    return { finished: done, ready: done, updateCallbackDone: done, skipTransition: () => undefined };
+  });
+  Object.defineProperty(document, 'startViewTransition', { value: startViewTransition, configurable: true });
+  const router = renderAwayFromHome();
+
+  await userEvent.click(screen.getByRole('link', { name: 'Home' }));
+
+  await waitFor(() => expect(router.state.location.search).toBe(''));
+  expect(startViewTransition).toHaveBeenCalledOnce();
+  expect(screen.getByRole('heading', { name: 'fabric-pilot' })).toBeInTheDocument();
+});
+
+test('without the View Transitions API the Home link goes to the start page as before', async () => {
+  expect('startViewTransition' in document).toBe(false);
+  const router = renderAwayFromHome();
+
+  await userEvent.click(screen.getByRole('link', { name: 'Home' }));
+
+  await waitFor(() => expect(router.state.location.search).toBe(''));
   expect(screen.getByRole('heading', { name: 'fabric-pilot' })).toBeInTheDocument();
 });

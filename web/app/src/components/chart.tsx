@@ -1,5 +1,7 @@
 import type { EChartsOption } from 'echarts';
 import ReactECharts from 'echarts-for-react';
+import { useMemo } from 'react';
+import { echartsTheme, useChartTheme } from './chart-theme';
 
 interface ChartProps {
   option: EChartsOption;
@@ -7,11 +9,13 @@ interface ChartProps {
   height?: number;
 }
 
-/** An ECharts chart; label names it for screen readers. */
+/** An ECharts chart in the theme's colours, which follows dark mode; label names it for screen readers. */
 export function Chart({ option, label, height = 320 }: ChartProps) {
+  const chartTheme = useChartTheme();
+  const theme = useMemo(() => echartsTheme(chartTheme), [chartTheme]);
   return (
     <div role="img" aria-label={label}>
-      <ReactECharts option={option} style={{ height }} />
+      <ReactECharts option={option} theme={theme} style={{ height }} />
     </div>
   );
 }

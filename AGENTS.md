@@ -1,11 +1,12 @@
 # Agent guide — fabric-pilot
 
-This file is read by every agent working here, whichever model or tool it is. Each section below comes from one choice in `fabric.yaml`; the reasoning is in `docs/adr/`. Follow all of them.
+This file is read by every agent working here, whichever model or tool it is. Each section below comes from one choice in `fabric.yaml`; the reasoning is in `docs/adr/fabric/`, one ADR per choice, and the project's own decisions are the numbered ADRs in `docs/adr/`. Follow all of them.
 
 ## Project structure (base)
 
 - Run `dotnet tool restore` once after cloning; local tools are pinned in `.config/dotnet-tools.json`.
-- Build everything with `dotnet build build.proj`. Run locally with `dotnet run --project src/AppHost`.
+- Build everything with `dotnet build build.proj`. Run locally with `dotnet run --project src/AppHost`, or `aspire run` (`aspire.config.json` names the AppHost); Docker must be running. The README's "Run locally" lists what else must be installed.
+- `dotnet test --project <test project>` works only because `global.json`'s `"test": { "runner": "Microsoft.Testing.Platform" }` selects Microsoft.Testing.Platform; without it the SDK answers `MSB1001: Unknown switch`. Keep that section whenever `global.json` is rewritten. Without it, `.github/scripts/check-test-runner.sh` (run first by `.github/scripts/test.sh`) and the architecture rule `GlobalJsonSelectsTheTestingPlatform` fail, naming the file; a new script or workflow step that runs `dotnet test --project` runs that check first.
 - Format with `bash .github/scripts/format.sh` before you push. CI runs it with `--verify-no-changes` and fails on any file `dotnet format` would change, modules and tests included.
 - A workflow step's `uses:` names a full 40-character commit SHA with its version tag in a comment (`actions/checkout@<sha> # v4.4.0`), never a tag or branch: a tag can be moved to code nobody reviewed. The architecture rule `WorkflowActionsArePinned` fails the tests otherwise.
 - Code style fails the Release build or the format check (`.editorconfig`), so write it the way the rules want:
@@ -36,6 +37,14 @@ This file is read by every agent working here, whichever model or tool it is. Ea
 - A model's key is an Aspire secret parameter in `src/AppHost` like any other secret, never in `appsettings*.json`, source or a test. With a model, `NoSecretInSettings` also fails a settings value holding `sk-...`.
 - Tests never call a real model: give the code under test a `FakeChatClient` (`tests/Fakes`) with the answer the test needs, and read what it was asked from `Requests`. A test that would reach a provider is a bug, whatever the network allows.
 - A model's answer is untrusted input: parse it into a typed shape and check it like a request body; never execute it, interpolate it into SQL or markup, or pass it on as a tool's argument unchecked.
+
+## Module sample (base)
+
+- `fabric add-module <name>` gives the module a sample to copy from: a `Sample` with a name, created by `POST /<module>/samples` (`CreateSample`), listed a page at a time by `GET /<module>/samples` (`ListSamples`) and read back by `GET /<module>/samples/{id}` (`GetSample`), built the way the module's style builds anything, with its tests, its endpoints in the OpenAPI document and its table's migration `20261118000000_CreateSamples` where it has a table. It is there to be renamed or deleted; never build a feature on it as it is. The modules a pack brings (`dashboards`, `assistant`) have use cases of their own and no sample.
+- The module's page (`web/app/src/modules/<module>/<Module>Page.tsx`) starts from the sample too: the samples in `DataTable`, with skeleton rows while they load and an `EmptyState` whose action leads to the form, and `Create<Module>SampleForm.tsx`, which creates one. `use<Module>Samples.ts` reads them through the generated client and puts a new one in the cached list at once, taken out again when the host refuses it; copy it for a list of your own. Its tests are `<Module>PageSamples.test.tsx`, `use<Module>Samples.test.tsx`, the axe check over `<Module>Page.data.ts`'s `examples` and `emptyExamples`, and `web/app/e2e/<module>-samples.spec.ts`.
+- The types the OpenAPI document names carry the module's name (`<Module>SampleDto`, `Create<Module>SampleRequest`), so two modules' samples never share a schema; a module's own DTOs need names no other module uses for the same reason.
+- To start from it, rename `Sample` and everything named after it to the module's first record (`Invoice`, `InvoiceDto`, `CreateInvoice`, `/invoices`), delete the module's `Migrations` folder and add the first migration of your own with `dotnet ef migrations add`. To drop it, delete every file and folder with `Sample` in its name under `src/Modules/<Module>/` and `tests/Modules/<Module>.Tests/`, `tests/Integration.Tests/<Module>SamplesTests.cs` and the module's `Migrations` folder; in the web app, the files with `Sample` in their name in `web/app/src/modules/<module>/` and `web/app/e2e/<module>-samples.spec.ts`, then give the page and its `<Module>Page.data.ts` your own content. Either way, run the integration tests once so they rewrite `web/app/openapi.json`, and commit it.
+- Once a database outside your machine has the sample's table, do neither: add a migration that drops or renames the table instead.
 
 ## Board protocol
 
@@ -96,6 +105,7 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 - A use case is a record implementing `ICommand<TResult>` (changes state) or `IQuery<TResult>` (reads), in the module's Application project under `Commands/` or `Queries/`.
 - Its handler implements `ICommandHandler<TCommand, TResult>` or `IQueryHandler<TQuery, TResult>` in the same module. Exactly one handler per request; handlers are discovered, never registered by hand.
 - Endpoints call `IDispatcher.SendAsync` / `QueryAsync`; they hold no business logic.
+- A consumer may take `IDispatcher` and its module's unit of work, aggregate store and other services by constructor, like any dependency. Wolverine takes them from the message's scope (`ResolveDispatcherFromScope`, `ResolveModuleServicesFromScope`, in the host's messaging): never list a module's service for Wolverine by hand, and never allow service location for everything.
 - `CancellationToken` is the last parameter of every handler method.
 
 ## API style: minimal APIs
@@ -335,8 +345,10 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 ## Routing: React Router
 
 - A module's screens live in `src/modules/<module>/`; its `routes.tsx` exports `route` and the app picks it up by itself. Do not list modules in `App.tsx`.
+- `src/App.tsx` is the app shell; it finds the modules' `routes.tsx` files for the sidebar, the routes, the breadcrumbs (`src/shell/Breadcrumbs.tsx`) and the command palette (`src/shell/CommandPalette.tsx`). A route's `title` is its name in all three. Its tests are `src/shell/AppShell.test.tsx`.
 - Import from `react-router`, never `react-router-dom`.
-- Tests render routes inside `MemoryRouter`.
+- Every `Link` and `NavLink` carries `viewTransition`, and `navigate(to, { viewTransition: true })` asks for one too: the app runs a data router (`src/providers/AppRouter.tsx`), so a route change is a view transition where the browser has the View Transitions API, and changes the page as before where it has not. With reduced motion `src/index.css` takes the transition's animation away, so the page changes at once. No generated module has a detail page; to carry an element from a list row to its detail page, give the row's element and the detail page's heading the same CSS `view-transition-name`, unique on each page, never on more than one element at a time.
+- Tests render routes inside `MemoryRouter`; a test of a view transition renders `createMemoryRouter` with `RouterProvider` from `react-router/dom`, as `src/App.test.tsx` does.
 
 ## Forms: React Hook Form
 
@@ -352,11 +364,18 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 
 - Style with utility classes in `className`; merge conditional classes with `cn(...)`.
 - No CSS modules, no inline `style` for layout; global CSS only in `src/index.css`.
+- An animation runs only without reduced motion: every `animate-*` and `transition*` class carries `motion-safe:` (`motion-safe:transition-colors`, `motion-safe:data-[state=open]:animate-in`), also in a component a CLI adds. Lint fails one without it (`motion/respect-reduced-motion`); never turn the rule off.
 
 ## UI components: shadcn/ui
 
-- Need a component? `cd web/app && pnpm dlx shadcn@latest add <name>`, then `pnpm format`; it lands in `src/components/ui/`. Adapt it there.
-- Components style with the theme's variables (`bg-card`, `text-muted-foreground`); change colours and radius in `src/index.css`'s `:root`, never per component. The theme is light only; dark mode is a `.dark` block of the same variables.
+- Need a component? `cd web/app && pnpm dlx shadcn@latest add <name>`, then `pnpm format`; it lands in `src/components/ui/`. Adapt it there, starting with `motion-safe:` before each of its animation classes (lint names them).
+- Components style with the theme's variables (`bg-card`, `text-muted-foreground`), never a colour of their own. `src/index.css` holds two palettes of the same variables, `:root` (light) and `.dark` (dark), swapped as a whole; their colours are `fabric.yaml`'s colour scheme (`frontend.color-scheme`) on slate, so never edit a colour of them by hand. Change the radius in `:root`. `src/theme/contrast.test.ts` fails when a text colour has less than 4.5:1 on its background in either.
+- Lift a surface with the theme's elevations, from `shadow-elevation-1` (a card, the sidebar) through `shadow-elevation-2` (a popover, a tooltip) and `shadow-elevation-3` (a toast) to `shadow-elevation-4` (a dialog, a sheet), never `shadow-md` and its kind or a shadow of your own; `--elevation-1…4` in `src/index.css` have a light and a dark value. Glass (`backdrop-blur-md` over `bg-glass` or `bg-sidebar-glass`) belongs on the header, the sidebar, dialogs and the command palette only, the navigation and what floats over the page, never on content: cards, tables, forms and pages stay opaque. `src/theme/contrast.test.ts` checks the text on each glass token over its worst backdrop, black or white, so a more translucent glass fails it, and `e2e/glass.spec.ts` runs axe's colour-contrast rule on the frosted surfaces in a browser, in both themes.
+- Size text with the theme's type scale, `text-display`, `text-title`, `text-body`, `text-caption` (each with its line height, display and title with their weight), not `text-2xl` and its kind; a page's `h1` is `text-title`. The font is `fabric.yaml`'s (`frontend.font`), set as `--font-sans` and `--font-mono` in `src/index.css`. Tables and grids show tabular figures; give an amount or a count outside a table `tabular-nums`, so its digits line up.
+- The app follows the system's theme (`prefers-color-scheme`) until the user picks light, dark or system in `ThemeToggle` (`src/theme/`), in the app's sidebar. The choice is kept in `localStorage` under `theme`, which `index.html`'s script reads to set `.dark` on `<html>` before the first paint. Style what differs in the dark theme with the `dark:` variant or the palette, never by reading the theme in a component.
+- `src/App.tsx` is the app shell: the sidebar (`@/components/ui/sidebar`) lists the start page and every module from its `routes.tsx`, the breadcrumbs and the command palette (Ctrl+K or Cmd+K) follow the routes too, so a new module needs nothing in the shell.
+- Report what a mutation did with `notify.success('…')` or `notify.failure('…')` from `@/lib/notify`: a toast that is a status message or an alert. Call it rather than sonner's `toast`, which gives a toast no role.
+- While a list's query is pending, show `Skeleton`s (`@/components/ui/skeleton`) shaped like its content, not a `Loading…` paragraph; when it has nothing, an `EmptyState` (`@/components/ui/empty-state`): an icon (`<Inbox />` from lucide-react), one sentence saying what is missing and the primary action that fills it.
 - Compose screens from those components; do not install MUI, Ant Design, Mantine or Chakra (lint refuses them).
 
 ## Design system: none
@@ -368,11 +387,16 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 - Lists of records use `DataTable` with columns from `columnsOf<Row>()` (`@/components/ui/data-table-columns`).
 - Define columns at module scope, and give `data` a stable fallback (`const none: Row[] = []`), not `?? []` inline.
 - Need sorting or paging? Register the feature once in `data-table-columns.ts` and render it in `DataTable`.
+- While the query is pending, pass `loading={isLoading}`: the table is busy, says "Loading…" to screen readers and shows skeleton rows in its own shape. Give `empty` an `EmptyState` (`@/components/ui/empty-state`), which it shows when it has no rows: `<DataTable columns={columns} data={data ?? none} loading={isLoading} empty={<EmptyState icon={<Inbox />} action={…}>No invoices yet.</EmptyState>} />`. Never put a `Loading…` paragraph or an empty table in its place.
+- Pass a list's `PagedResult` as `paging={page}`: the table says below its rows "Showing 1–25 of 312", which screen readers hear as its description. Never write that line yourself.
+- Give a row's actions (edit, delete) as `actions={(invoice) => <Button …>Edit {invoice.number}</Button>}`: they fill the row's last cell, under a header screen readers hear as "Actions", and show while the row is hovered or has focus. Give each a name that says which row it acts on.
+- The table has its own density toggle and Columns control, and its header stays in view while the page scrolls: never add your own, or wrap it in an element that scrolls, which stops the header sticking to the page.
 
 ## Charts: ECharts
 
 - Draw charts with `<Chart option={...} label="..." />` from `@/components/chart`; `label` says what the chart shows for screen readers.
 - Type options as `EChartsOption`; keep them at module scope or memoised.
+- Leave colours to the theme: the chart draws its series in `--chart-1…5` and its text and lines in the theme's colours, and follows dark mode. Change a colour in `src/index.css`, never with a hex value in an option.
 
 ## Realtime: none
 
@@ -386,6 +410,7 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 ## Browser sign-in: oidc-client-ts
 
 - Read the signed-in user with `useAuth()` from `react-oidc-context`; never parse tokens yourself.
+- Who is signed in, and Sign out, are the shell's user menu (`src/auth/UserMenu.tsx`): the name is the host's `/me` answer (`useCurrentUser()` from `@/api/useCurrentUser`), not the token's.
 - Do not add the `Authorization` header by hand; `src/api/baseApi.ts` does it for every generated endpoint.
 - Local users: `developer` / `developer` (and `developer-b` with tenancy), defined in `src/AppHost/realms/realm.json`.
 - Hiding an element is a convenience, never protection: the backend policy decides. Every action you hide still needs its endpoint's policy (`.RequireAuthorization(...)`).
@@ -405,6 +430,17 @@ Agents coordinate through GitHub only: issues, labels, branches and the board. T
 - With browser sign-in, the axe check renders the screen for the local user `developer`, signed in: what `RequirePermission`, `useHasRole` and `useHasClaim` show the developer is checked, what they show only to other users is not.
 - Fill in the screen's `<Name>Page.data.ts`, beside its axe check: an example answer per hook of the generated client the screen calls (`export const examples: Record<string, unknown> = { useGetInvoicesQuery: { items: [...], totalCount: 1, page: 1, pageSize: 20 } };`). The axe check then also renders the screen with that data; while the file is empty, the screen is checked only as it loads, and whatever it shows once data comes goes unchecked.
 - Fix the markup (labels, roles, headings), never silence a rule.
+
+## Colour scheme: blue
+
+- The palettes in `src/index.css` are shadcn/ui's slate in its blue scheme: the primary colour, the sidebar's active item, the focus rings and the charts are blue, everything else slate.
+- To switch to another scheme (blue, green or orange), run `fabric change --set frontend.color-scheme=<scheme>` in a clean working tree: it repaints the palettes (and a design system's brand tokens), records the scheme in `fabric.yaml` and keeps the project's other edits, as a merge left uncommitted for review. Never edit the scheme in `fabric.yaml` or a palette colour by hand; `fabric upgrade` keeps the recorded scheme.
+
+## Font: Inter
+
+- The app's typeface is Inter, `fabric.yaml`'s font (`frontend.font`): the npm package `@fontsource-variable/inter`, imported in `src/index.css` and bundled with the app, never from a font host. Never add a `<link>` or an `@import` of Google Fonts or another CDN: `src/theme/font.test.ts` fails on anything `index.html` or `src/index.css` loads from another host.
+- The theme's `--font-sans` names it; text takes it through `font-sans` (the page's default) and monospace text the system's through `font-mono`, never a `font-family` of a component's own.
+- To switch to the other font (Inter or Geist), run `fabric change --set frontend.font=<font>` in a clean working tree: it changes the imported package in `src/index.css` and `package.json` and the theme's font names, records the font in `fabric.yaml` and keeps the project's other edits, as a merge left uncommitted for review; then run `pnpm install` so the lockfile names the new package. Never edit the font in `fabric.yaml`, the theme or the imports by hand; `fabric upgrade` keeps the recorded font.
 
 ## Reads: EF Core
 

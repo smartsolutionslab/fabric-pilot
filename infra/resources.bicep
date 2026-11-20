@@ -309,7 +309,7 @@ resource blobsForHost 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 // The model: an Azure OpenAI resource with the chat and embedding deployments the AppHost's parameters name. The host
-// authenticates with its key (ADR-0019), kept in Key Vault.
+// authenticates with its key (docs/adr/fabric/backend-llm-azure-openai.md), kept in Key Vault.
 resource openAi 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: 'oai-${token}'
   location: openAiLocation

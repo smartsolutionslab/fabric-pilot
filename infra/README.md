@@ -117,7 +117,7 @@ All commands run from the repository root.
    `TENANTS` is the host's `Tenancy:Tenants`: each name needs the Keycloak group `/tenants/<name>`, which step 6
    creates. The model's deployments are parameters of `infra/main.bicep` with the AppHost's defaults; change one only
    together with its version (`chatModelVersion`, `embeddingModelVersion`), and remember that an embedding model of
-   another size needs vector tables of that size (ADR-0023).
+   another size needs vector tables of that size (docs/adr/fabric/backend-llm-embeddings-azure-openai.md).
 
 5. **Provision and deploy:** `azd up`. It creates everything above (about 15 minutes, most of it PostgreSQL), then
    deploys `migrations` and runs the job to completion (`infra/scripts/run-migrations.sh`), then `host`, then `web`.
@@ -188,7 +188,7 @@ All commands run from the repository root.
 - **Moving a deployment into the network** (one made before docs/adr/0055, such as the first demo). A Container Apps
   environment cannot join a subnet after it is created, so the apps, the job and the environment are made again; the
   database, Key Vault, Storage and everything in them stay. Keycloak's sessions end; nothing else is lost (the broker
-  keeps no messages, ADR-0007's outbox is in PostgreSQL). The environment's new default domain changes `WEB_URL` and
+  keeps no messages, the outbox of docs/adr/fabric/backend-bus-library-wolverine.md is in PostgreSQL). The environment's new default domain changes `WEB_URL` and
   `KEYCLOAK_URL`: tell the tenants the new address.
 
   ```sh

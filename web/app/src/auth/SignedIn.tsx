@@ -1,7 +1,10 @@
 import { type ReactNode, useEffect } from 'react';
 import { hasAuthParams, useAuth } from 'react-oidc-context';
 
-/** Renders its children for a signed-in user and sends everyone else to the identity provider. */
+/**
+ * Renders its children for a signed-in user and sends everyone else to the identity provider. Who is signed in, and
+ * Sign out, are in the app shell's user menu (UserMenu.tsx).
+ */
 export function SignedIn({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const mustSignIn =
@@ -20,15 +23,5 @@ export function SignedIn({ children }: { children: ReactNode }) {
     return <p>Signing in…</p>;
   }
 
-  return (
-    <>
-      <div className="flex items-center justify-end gap-3 p-2 text-sm">
-        <span>Signed in as {auth.user?.profile.preferred_username}</span>
-        <button type="button" onClick={() => void auth.signoutRedirect()}>
-          Sign out
-        </button>
-      </div>
-      {children}
-    </>
-  );
+  return children;
 }

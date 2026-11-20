@@ -1,8 +1,11 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '@fontsource-variable/inter';
 
-/* shadcn/ui's theme for components.json's baseColor, slate: change colours and radius here, not per component.
-   Light only: dark: utilities apply under a .dark ancestor, so dark mode is a .dark block of these variables. */
+/* shadcn/ui's slate theme (components.json's baseColor) in fabric.yaml's colour scheme, blue:
+   change the radius here, never a colour of the palettes by hand, and nothing per component. Two palettes of the same
+   variables, swapped as a whole: :root is the light one, .dark the dark one. The dark palette and dark: utilities
+   apply under a .dark ancestor, which src/theme sets on <html>. */
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -13,8 +16,6 @@
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
@@ -24,20 +25,89 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.984 0.003 247.858);
   --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
   --sidebar-accent: oklch(0.968 0.007 247.896);
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  /* Elevations, layered shadows from a card (1) to a dialog (4), and the frosted surfaces' translucent backgrounds:
+     the header, dialogs and the command palette on --glass, the sidebar on --sidebar-glass. */
+  --elevation-1: 0 1px 2px oklch(0.129 0.042 264.695 / 6%), 0 1px 3px oklch(0.129 0.042 264.695 / 10%);
+  --elevation-2: 0 2px 4px -1px oklch(0.129 0.042 264.695 / 6%), 0 4px 8px -2px oklch(0.129 0.042 264.695 / 10%);
+  --elevation-3: 0 4px 6px -2px oklch(0.129 0.042 264.695 / 5%), 0 12px 16px -4px oklch(0.129 0.042 264.695 / 10%);
+  --elevation-4: 0 8px 10px -6px oklch(0.129 0.042 264.695 / 8%), 0 24px 48px -12px oklch(0.129 0.042 264.695 / 18%);
+  --glass: oklch(1 0 0 / 98%);
+  --sidebar-glass: oklch(0.984 0.003 247.858 / 80%);
+  --primary: oklch(0.488 0.243 264.376);
+  --primary-foreground: oklch(0.97 0.014 254.604);
+  --ring: oklch(0.546 0.245 262.881);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+  --sidebar-ring: oklch(0.546 0.245 262.881);
+}
+
+.dark {
+  --background: oklch(0.129 0.042 264.695);
+  --foreground: oklch(0.984 0.003 247.858);
+  --card: oklch(0.208 0.042 265.755);
+  --card-foreground: oklch(0.984 0.003 247.858);
+  --popover: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.984 0.003 247.858);
+  --secondary: oklch(0.279 0.041 260.031);
+  --secondary-foreground: oklch(0.984 0.003 247.858);
+  --muted: oklch(0.279 0.041 260.031);
+  --muted-foreground: oklch(0.704 0.04 256.788);
+  --accent: oklch(0.279 0.041 260.031);
+  --accent-foreground: oklch(0.984 0.003 247.858);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --sidebar: oklch(0.208 0.042 265.755);
+  --sidebar-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.279 0.041 260.031);
+  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --elevation-1: 0 1px 2px oklch(0 0 0 / 30%), 0 1px 3px oklch(0 0 0 / 20%);
+  --elevation-2: 0 2px 4px -1px oklch(0 0 0 / 30%), 0 4px 8px -2px oklch(0 0 0 / 30%);
+  --elevation-3: 0 4px 6px -2px oklch(0 0 0 / 30%), 0 12px 16px -4px oklch(0 0 0 / 40%);
+  --elevation-4: 0 8px 10px -6px oklch(0 0 0 / 40%), 0 24px 48px -12px oklch(0 0 0 / 60%);
+  --glass: oklch(0.208 0.042 265.755 / 90%);
+  --sidebar-glass: oklch(0.208 0.042 265.755 / 80%);
+  --primary: oklch(0.707 0.165 254.624);
+  --primary-foreground: oklch(0.282 0.091 267.935);
+  --ring: oklch(0.623 0.214 259.815);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar-primary: oklch(0.707 0.165 254.624);
+  --sidebar-primary-foreground: oklch(0.282 0.091 267.935);
+  --sidebar-ring: oklch(0.623 0.214 259.815);
+}
+
+/* fabric.yaml's font, inter, from its npm package (imported above, bundled with the app), and the type scale:
+   text-display, text-title, text-body and text-caption, each with its line height. */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --text-display: 2.25rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--letter-spacing: -0.025em;
+  --text-display--font-weight: 700;
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-title--letter-spacing: -0.0125em;
+  --text-title--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
 }
 
 @theme inline {
@@ -76,6 +146,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-glass: var(--glass);
+  --color-sidebar-glass: var(--sidebar-glass);
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-3: var(--elevation-3);
+  --shadow-elevation-4: var(--elevation-4);
 }
 
 @layer base {
@@ -84,5 +160,27 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1 {
+    @apply text-title;
+  }
+  /* Tabular figures, so the digits of amounts and counts line up in a column. */
+  table,
+  [role='grid'],
+  [role='treegrid'] {
+    font-variant-numeric: tabular-nums;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+/* A route change is a view transition where the browser has the API: its default cross-fade. With reduced motion it
+   has no animation, so the page changes at once, as it does without the API. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
   }
 }
