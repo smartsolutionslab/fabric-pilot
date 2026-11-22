@@ -18,6 +18,6 @@ public static class TicketsStorage
             .AddScoped<ITicketStore, TicketStore>()
             .AddSingleton(_ => BlobServiceClients.Create(configuration.GetConnectionString(BlobsConnectionName)
                 ?? throw new InvalidOperationException($"Connection string '{BlobsConnectionName}' is missing; Aspire provides it.")))
-            .AddSingleton<IBlobStore, AzureBlobStore>();
+            .AddScoped<IBlobStore, AzureBlobStore>();
     }
 }
