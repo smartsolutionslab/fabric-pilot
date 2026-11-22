@@ -54,6 +54,8 @@ if (builder.ExecutionContext.IsRunMode)
 var blobs = builder.AddAzureStorage("storage")
     .RunAsEmulator(azurite => azurite.WithDataVolume())
     .AddBlobs("blobs");
+// The MigrationRunner moves blobs as well as rows: attachments stored before their names carried the tenant.
+migrations.WithReference(blobs).WaitFor(blobs);
 var messaging = builder.AddRabbitMQ("messaging")
     .WithManagementPlugin()
     .WithDataVolume();

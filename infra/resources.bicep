@@ -570,12 +570,18 @@ resource migrations 'Microsoft.App/jobs@2025-01-01' = {
           name: 'migrations'
           image: empty(migrationsImageName) ? placeholderImage : migrationsImageName
           resources: { cpu: json('0.5'), memory: '1Gi' }
-          env: [{ name: 'ConnectionStrings__database', secretRef: 'database-connection' }]
+          // The blob endpoint too, reached with the apps' identity: the runner moves attachments stored before their
+          // names carried the tenant (LegacyAttachmentNames).
+          env: [
+            { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
+            { name: 'ConnectionStrings__database', secretRef: 'database-connection' }
+            { name: 'ConnectionStrings__blobs', value: storage.properties.primaryEndpoints.blob }
+          ]
         }
       ]
     }
   }
-  dependsOn: [registryPull, vaultRead, postgresEndpoint, vaultEndpoint]
+  dependsOn: [registryPull, vaultRead, blobsForHost, postgresEndpoint, vaultEndpoint, blobEndpoint]
 }
 
 // The web app (the AppHost's "web"): the built SPA behind nginx, which forwards /api to the host as Vite does locally.
