@@ -8,8 +8,8 @@ namespace FabricPilot.Rag.Tests;
 
 /// <summary>
 /// The AppHost's database alone, on an empty container, started once per test run: the pgvector image, migrated by the
-/// MigrationRunner as before the host starts, so every module's vector table exists. Nothing else runs: no host, no
-/// model.
+/// MigrationRunner as before the host starts, so every module's vector table exists. Besides them only the blob storage
+/// emulator the runner waits for, to migrate attachments in: no host, no model.
 /// </summary>
 public sealed class ApplicationDatabase : IAsyncLifetime
 {
@@ -41,7 +41,9 @@ public sealed class ApplicationDatabase : IAsyncLifetime
             database.Add(user);
         }
 
-        foreach (var resource in builder.Resources.Where(resource => !database.Contains(resource)).ToList())
+        // Only what runs a process of its own, and the parameters, are removed: the blob storage emulator the runner
+        // waits for is an Azure resource, which starts through Azure's provisioning resources and needs them kept.
+        foreach (var resource in builder.Resources.Where(resource => !database.Contains(resource) && resource is ContainerResource or ProjectResource or ExecutableResource or ParameterResource).ToList())
         {
             builder.Resources.Remove(resource);
         }
