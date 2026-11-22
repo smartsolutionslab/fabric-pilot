@@ -5,7 +5,7 @@ namespace FabricPilot.Modules.Tickets.Application.Queries.DownloadAttachment;
 
 /// <summary>
 /// Reads the ticket first, through the tenant's rows only, so a file is found only by the tenant whose ticket names
-/// it; the blob's name alone opens nothing.
+/// it. The store holds to the same tenant on its own: a blob's name opens nothing of another tenant's.
 /// </summary>
 public sealed class DownloadAttachmentHandler(ITicketStore tickets, IBlobStore blobs)
     : IQueryHandler<DownloadAttachment, Result<AttachmentDownload, ApiError>>
