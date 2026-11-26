@@ -3,6 +3,7 @@
   <!-- E-mail is hand-written in this repository until the catalog offers it (README, charter). -->
   <ItemGroup>
     <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" VersionOverride="11.0.0" />
   </ItemGroup>
 
 </Project>
